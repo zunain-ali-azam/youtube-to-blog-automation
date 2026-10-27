@@ -1,0 +1,32 @@
+[project]
+name = "explainer"
+version = "0.1.0"
+description = "Turn a YouTube video into a review-ready blog article (Markdown, optionally a Ghost draft)."
+requires-python = ">=3.11"
+dependencies = [
+    "anthropic>=2.2",
+    "httpx>=0.28",
+    "pydantic>=2.7",
+    "PyJWT>=2.8",
+    "python-dotenv>=1.0",
+    "typer>=0.12",
+    "youtube-transcript-api>=1.2,<2",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+# av 19 dropped the `metadata_errors` argument that faster-whisper 1.2 passes to av.open.
+whisper = ["faster-whisper>=1.1", "av<19", "yt-dlp>=2025.1"]
+
+[project.scripts]
+explainer = "explainer.cli:app"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["explainer*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

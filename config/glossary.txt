@@ -1,0 +1,18 @@
+# Spellings the model and Whisper can't recover from context: names, niche tools, odd casing.
+# Add a term only after a generated article got it wrong. Per-video names come from the
+# video's own title, description and chapters automatically.
+Ahsan
+Code with Ahsan
+Gemini CLI
+Claude Code
+Codex
+n8n
+ElevenLabs
+AI SDK
+Genkit
+ADK
+NgRx
+RxJS
+zoneless
+Vite
+MCP
