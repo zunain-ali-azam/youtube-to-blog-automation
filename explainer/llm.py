@@ -41,6 +41,28 @@ class LLMError(Exception):
     pass
 
 
+# Model ids that aren't chat models (embeddings, speech, images, moderation, ...).
+_NOT_CHAT = re.compile(r"embed|tts|whisper|transcribe|audio|realtime|dall-e|image|moderation|guard|ocr|davinci|babbage|sora")
+
+
+def list_models(provider: str, api_key: str, base_url: str = "") -> list[str]:
+    """Chat model ids the provider offers to this key, newest first where the API says."""
+    if provider == "anthropic":
+        return [model.id for model in anthropic.Anthropic(api_key=api_key).models.list(limit=100)]
+    base_url = base_url or BASE_URLS.get(provider, "")
+    if not base_url:
+        raise LLMError(f"LLM_PROVIDER={provider} needs LLM_BASE_URL")
+    response = net.request(
+        "GET",
+        f"{base_url.rstrip('/')}/models",
+        headers={"Authorization": f"Bearer {api_key}"} if api_key else {},
+    ).json()
+    models = sorted(response.get("data", []), key=lambda m: m.get("created") or 0, reverse=True)
+    # Gemini lists ids as "models/<id>"; the chat endpoint takes the bare id.
+    ids = [m["id"].removeprefix("models/") for m in models]
+    return list(dict.fromkeys(i for i in ids if not _NOT_CHAT.search(i.lower())))
+
+
 def call(
     settings: Settings,
     *,

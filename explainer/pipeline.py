@@ -71,7 +71,13 @@ def finish(ctx: Context) -> None:
     ctx.jobs.upsert(ctx.video_id, status=status, current_stage=None, failed_stage=None, error=None)
 
 
-def run_all(ctx: Context, force: bool = False) -> None:
+def _ignore(name: str, event: str) -> None:
+    pass
+
+
+def run_all(ctx: Context, force: bool = False, on_stage: Callable[[str, str], None] = _ignore) -> None:
+    """Run every stage. `on_stage(name, event)` reports progress for the terminal UI; event
+    is running, done, skipped (the stage chose to write nothing), cached or failed."""
     if force:
         # Clear cached outputs so every stage runs again.
         for stage in STAGES:
@@ -79,8 +85,15 @@ def run_all(ctx: Context, force: bool = False) -> None:
     for stage in STAGES:
         if ctx.path(stage.output).exists():
             log.info("Stage %s: cached, skipping", stage.name)
+            on_stage(stage.name, "cached")
             continue
-        run_stage(ctx, stage)
+        on_stage(stage.name, "running")
+        try:
+            run_stage(ctx, stage)
+        except (StageFailed, KeyboardInterrupt):
+            on_stage(stage.name, "failed")
+            raise
+        on_stage(stage.name, "done" if ctx.path(stage.output).exists() else "skipped")
     finish(ctx)
 
 
