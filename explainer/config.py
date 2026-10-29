@@ -11,7 +11,22 @@ ROOT = Path(__file__).resolve().parent.parent
 PROMPTS_DIR = ROOT / "prompts"
 GLOSSARY_PATH = ROOT / "config" / "glossary.txt"
 
-DEFAULT_MODEL = "claude-opus-5-5"
+# Used when LLM_PROVIDER is anthropic and LLM_MODEL is empty; other providers need LLM_MODEL.
+DEFAULT_ANTHROPIC_MODEL = "claude-opus-5-5"
+
+# LLM_PROVIDER value -> (name shown in the guided run, env var holding its API key).
+# Ollama runs locally and needs no key.
+LLM_PROVIDERS = {
+    "anthropic": ("Anthropic (Claude)", "ANTHROPIC_API_KEY"),
+    "openai": ("OpenAI", "OPENAI_API_KEY"),
+    "gemini": ("Google Gemini", "GEMINI_API_KEY"),
+    "groq": ("Groq", "GROQ_API_KEY"),
+    "deepseek": ("DeepSeek", "DEEPSEEK_API_KEY"),
+    "openrouter": ("OpenRouter", "OPENROUTER_API_KEY"),
+    "mistral": ("Mistral", "MISTRAL_API_KEY"),
+    "ollama": ("Ollama (local)", None),
+    "custom": ("Other OpenAI-compatible API", "LLM_API_KEY"),
+}
 
 
 class ConfigError(Exception):
@@ -27,7 +42,11 @@ class Settings(BaseModel):
     whisper_device: str = "auto"
     whisper_compute_type: str = "int8"
 
-    anthropic_model: str = DEFAULT_MODEL
+    llm_provider: str = "anthropic"  # a key of LLM_PROVIDERS
+    # Filled from the provider's own key variable (GEMINI_API_KEY, ...), see load_settings.
+    llm_api_key: str = ""
+    llm_model: str = ""
+    llm_base_url: str = ""
 
     ghost_url: str = "http://localhost:2368"
     ghost_admin_api_key: str = ""
@@ -42,6 +61,13 @@ class Settings(BaseModel):
     webhook_secret: str = ""
 
     data_dir: Path = ROOT / "data"
+
+    @field_validator("llm_provider")
+    @classmethod
+    def _known_provider(cls, v: str) -> str:
+        if v not in LLM_PROVIDERS:
+            raise ValueError(f"LLM_PROVIDER must be one of: {', '.join(LLM_PROVIDERS)}")
+        return v
 
     @field_validator("ghost_url", "site_url")
     @classmethod
@@ -63,6 +89,12 @@ def load_settings() -> Settings:
         # Empty values fall back to the defaults above.
         if raw:
             values[name] = raw
+    provider = values.get("llm_provider", "anthropic")
+    key_env = LLM_PROVIDERS.get(provider, (None, None))[1]
+    values["llm_api_key"] = os.environ.get(key_env, "").strip() if key_env else ""
+    if provider == "anthropic" and not values.get("llm_model"):
+        # ANTHROPIC_MODEL is what older .env files call it.
+        values["llm_model"] = os.environ.get("ANTHROPIC_MODEL", "").strip() or DEFAULT_ANTHROPIC_MODEL
     return Settings(**values)
 
 

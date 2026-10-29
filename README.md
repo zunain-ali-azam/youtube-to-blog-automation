@@ -27,7 +27,7 @@ cp .env.example .env    # then fill it in
 
 **Local Whisper (optional):** `.venv/bin/pip install -e ".[whisper]"` adds faster-whisper and yt-dlp. Set `TRANSCRIPT_METHOD=auto` to use captions when a video has them and transcribe locally when it doesn't, or `whisper` to always transcribe. It's free and runs on your machine; the model downloads on first use (`small` is about 500 MB). No system ffmpeg is needed. yt-dlp works best with [deno](https://deno.com) installed, since YouTube extraction without a JavaScript runtime is deprecated.
 
-Phase 1 needs `YOUTUBE_API_KEY` and `ANTHROPIC_API_KEY`. Ghost is optional: set `GHOST_URL` and `GHOST_ADMIN_API_KEY` to also get a Ghost draft, or leave the key empty to stop at `article.md`. `GHOST_AUTHOR_EMAIL` is optional; without it, Ghost credits the site owner. Set `SITE_URL` to the public blog base (for example `https://iomechs.com/blog`) when another site displays the posts through the Content API: the draft's canonical URL becomes `SITE_URL/<slug>`. The draft also gets Open Graph and Twitter titles and descriptions (copied from the meta fields, since a headless front end has no theme to fall back on), and `codeinjection_head` holds the VideoObject and FAQPage JSON-LD, which that site has to put into its `<head>` itself.
+Phase 1 needs `YOUTUBE_API_KEY` and an API key for your LLM provider (see [LLM](#llm)). Ghost is optional: set `GHOST_URL` and `GHOST_ADMIN_API_KEY` to also get a Ghost draft, or leave the key empty to stop at `article.md`. `GHOST_AUTHOR_EMAIL` is optional; without it, Ghost credits the site owner. Set `SITE_URL` to the public blog base (for example `https://iomechs.com/blog`) when another site displays the posts through the Content API: the draft's canonical URL becomes `SITE_URL/<slug>`. The draft also gets Open Graph and Twitter titles and descriptions (copied from the meta fields, since a headless front end has no theme to fall back on), and `codeinjection_head` holds the VideoObject and FAQPage JSON-LD, which that site has to put into its `<head>` itself.
 
 **YouTube API key:** Google Cloud Console → APIs & Services → enable *YouTube Data API v3* → Credentials → *Create API key*. Restrict the key to that API.
 
@@ -62,7 +62,23 @@ Prompts live in `prompts/` and the technical glossary in `config/glossary.txt`. 
 
 ## LLM
 
-The model comes from `ANTHROPIC_MODEL` (default `claude-opus-5-5`). Article generation is a single call at `high` effort, with output constrained to the `Article` JSON schema and validated by pydantic, plus up to 2 retries that include the validation error. Requests opt into Anthropic's server-side refusal fallback (`fallbacks: "default"`), so a safety-classifier decline is retried on the recommended fallback model instead of failing the job.
+Any LLM provider works. `LLM_PROVIDER` picks it, and its key goes in that provider's own variable, so you can keep several keys and switch by changing `LLM_PROVIDER`:
+
+| `LLM_PROVIDER` | Key variable | Notes |
+|---|---|---|
+| `anthropic` (default) | `ANTHROPIC_API_KEY` | `LLM_MODEL` defaults to `claude-opus-5-5` |
+| `openai` | `OPENAI_API_KEY` | |
+| `gemini` | `GEMINI_API_KEY` | |
+| `groq` | `GROQ_API_KEY` | |
+| `deepseek` | `DEEPSEEK_API_KEY` | |
+| `openrouter` | `OPENROUTER_API_KEY` | |
+| `mistral` | `MISTRAL_API_KEY` | |
+| `ollama` | none | Local; `http://localhost:11434/v1` |
+| `custom` | `LLM_API_KEY` | Any other OpenAI-compatible API; also set `LLM_BASE_URL` (ending in `/v1`) |
+
+Every provider except Anthropic is called through its OpenAI-compatible `/chat/completions` endpoint and needs `LLM_MODEL`. `LLM_BASE_URL` also overrides a named provider's URL (for example Ollama on another machine).
+
+Article generation is a single call, with output constrained to the `Article` JSON schema and validated by pydantic, plus up to 2 retries that include the validation error. On Anthropic it runs at `high` effort and opts into the server-side refusal fallback (`fallbacks: "default"`), so a safety-classifier decline is retried on the recommended fallback model instead of failing the job. Other providers get the schema as `response_format` and in the system prompt, since not every compatible API enforces `response_format`; how reliably they return valid JSON depends on the model.
 
 ## Manual Ghost setup
 

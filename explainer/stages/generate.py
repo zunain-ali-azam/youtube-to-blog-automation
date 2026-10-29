@@ -16,7 +16,6 @@ the model can pick internal links, and saved to ghost_posts.json for the render 
 import json
 import logging
 
-import anthropic
 import httpx
 from pydantic import ValidationError
 
@@ -91,28 +90,26 @@ def run(ctx: Context) -> None:
         load_prompt("generate_article.md").replace("{glossary}", glossary)
         + "\n\n" + load_prompt("style_guide.md")
     )
-    schema = anthropic.transform_schema(Article)
 
     posts = _published_posts(ctx)
     existing = [{"title": p["title"], "slug": p["slug"], "tags": p["tags"]} for p in posts]
     messages = [{"role": "user", "content": build_user_message(meta, transcript, existing_posts=existing)}]
 
     for attempt in range(MAX_RETRIES + 1):
-        message = llm.call(
-            model=ctx.settings.anthropic_model,
+        text = llm.call(
+            ctx.settings,
             system=system,
             messages=messages,
             effort="high",
-            json_schema=schema,
+            shape=Article,
         )
-        text = llm.text_of(message)
         try:
             article = Article.model_validate_json(text)
         except ValidationError as exc:
             if attempt == MAX_RETRIES:
                 raise
             log.warning("Article failed validation (attempt %d), retrying: %s", attempt + 1, exc)
-            messages.append({"role": "assistant", "content": message.content})
+            messages.append({"role": "assistant", "content": text})
             messages.append({
                 "role": "user",
                 "content": f"That JSON failed validation:\n{exc}\n\nReturn the complete corrected article.",

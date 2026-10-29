@@ -15,7 +15,6 @@ can't be read (private, deleted, rate limited) is skipped with a warning.
 import logging
 import textwrap
 
-import anthropic
 import httpx
 from pydantic import BaseModel
 
@@ -132,14 +131,14 @@ def _blocks_text(article: Article, blocks: dict[str, CodeBlock]) -> str:
 
 
 def _ask(ctx: Context, prompt: str, content: str, shape: type[BaseModel]):
-    message = llm.call(
-        model=ctx.settings.anthropic_model,
+    text = llm.call(
+        ctx.settings,
         system=load_prompt(prompt),
         messages=[{"role": "user", "content": content}],
         effort="medium",
-        json_schema=anthropic.transform_schema(shape),
+        shape=shape,
     )
-    return shape.model_validate_json(llm.text_of(message))
+    return shape.model_validate_json(text)
 
 
 def pick_files(ctx: Context, article: Article, blocks: dict[str, CodeBlock], files: dict[str, list[str]]) -> list[str]:
