@@ -1,6 +1,6 @@
 [project]
 name = "youtube-to-blog-automation"
-version = "0.1.0"
+version = "0.2.0"
 description = "YouTube to blog automation: turn a video into a review-ready blog article (Markdown, optionally a CMS draft)."
 requires-python = ">=3.11"
 dependencies = [
