@@ -1,11 +1,11 @@
-# Video Explainer Pipeline
+# YouTube to Blog Automation
 
-Turns a YouTube video into a review-ready blog article: a restructured written explainer with the video embedded, timestamped "watch this part" links, SEO metadata and VideoObject JSON-LD. Every finished blog is saved to `generated_blogs/<slug>.md`. It can also go to Ghost as a **draft**, during the run or later with `explainer push`, and a human reviews and publishes it there.
+Turns a YouTube video into a review-ready blog article: a restructured written explainer with the video embedded, timestamped "watch this part" links, SEO metadata and VideoObject JSON-LD. Every finished blog is saved to `generated_blogs/<slug>.md`. It can also go to a CMS as a **draft**, during the run or later with `yt2blog push`, and a human reviews and publishes it there. Ghost is supported today; Sanity and Payload CMS are planned (see [Destinations](#destinations)).
 
 The full spec is in [`video-explainer-pipeline.md`](video-explainer-pipeline.md).
 
 ```
-explainer run https://www.youtube.com/watch?v=VIDEO_ID
+yt2blog run https://www.youtube.com/watch?v=VIDEO_ID
 ```
 
 ## Status
@@ -15,7 +15,8 @@ explainer run https://www.youtube.com/watch?v=VIDEO_ID
 | 1. MVP | Stages 0–5 with captions (Markdown output, optional Ghost draft) | **Done** |
 | 2. Transcription | Whisper, `auto` mode, glossary prompt, `compare-transcripts` | **Done** |
 | 3. Quality | Code from repo, quality checks, internal links (warnings print in the terminal) | **Done**, except Slack notify |
-| 4. Publishing loop | `explainer serve` webhook | Not started |
+| 4. Publishing loop | `yt2blog serve` webhook | Not started |
+| 5. More destinations | Sanity, Payload CMS | Not started |
 
 ## Setup
 
@@ -34,23 +35,23 @@ Phase 1 needs `YOUTUBE_API_KEY` and an API key for your LLM provider (see [LLM](
 ## Usage
 
 ```bash
-explainer                                               # guided run (same as `explainer start`)
-explainer run <url> [--force] [--no-ghost] [--transcript captions|whisper|auto]   # whole pipeline
-explainer stage <stage> <video_id>                      # rerun one stage from cache
-explainer push <blog>                                   # send a saved blog to Ghost
-explainer status [<video_id>]                           # show jobs
-explainer compare-transcripts <url> [--force]           # captions vs Whisper report
+yt2blog                                               # guided run (same as `yt2blog start`)
+yt2blog run <url> [--force] [--no-ghost] [--transcript captions|whisper|auto]   # whole pipeline
+yt2blog stage <stage> <video_id>                      # rerun one stage from cache
+yt2blog push <blog>                                   # send a saved blog to Ghost
+yt2blog status [<video_id>]                           # show jobs
+yt2blog compare-transcripts <url> [--force]           # captions vs Whisper report
 ```
 
-`explainer` with no command (or `explainer start`) is the guided run. It opens with a welcome banner (block-letter logo, version, the commands and controls), then asks one step at a time down a single rail. Each answered step collapses to its answer (`◇  Model / │  claude-opus-5-5`), so the screen reads as a timeline:
+`yt2blog` with no command (or `yt2blog start`) is the guided run. It opens with a welcome banner (block-letter logo, version, the commands and controls), then asks one step at a time down a single rail. Each answered step collapses to its answer (`◇  Model / │  claude-opus-5-5`), so the screen reads as a timeline:
 
 1. The YouTube key, the LLM provider, that provider's key and the model. Saved keys show masked (`sk-a…hijk  (saved)`) and aren't asked again; the saved model is one Enter to keep. The model list comes live from the provider with your key, and long lists filter as you type. `.env` is created from `.env.example` if there isn't one, and what you enter is saved there.
 2. The video URL (checked when you press Enter) and the transcript source. The Whisper options are greyed out until the Whisper extra is installed.
 3. Whether to also send the blog to Ghost as a draft (asking for the Ghost keys if they aren't saved yet). The blog is saved to `generated_blogs/` either way.
 
-After **Start generating?**, the stages run as a live checklist on the same rail. The run ends with `SUCCESS`/`INFO`/`WARNING` lines (title, length, where the blog went, quality warnings) and the next commands to run. On a failure you get an `ERROR` line with the stage and the error, plus the log file; running again resumes from that stage. Ctrl+C or Esc at any step cancels without running anything. `explainer start --reconfigure` asks for every key again.
+After **Start generating?**, the stages run as a live checklist on the same rail. The run ends with `SUCCESS`/`INFO`/`WARNING` lines (title, length, where the blog went, quality warnings) and the next commands to run. On a failure you get an `ERROR` line with the stage and the error, plus the log file; running again resumes from that stage. Ctrl+C or Esc at any step cancels without running anything. `yt2blog start --reconfigure` asks for every key again.
 
-Every run saves the finished blog to `generated_blogs/<slug>.md` (git-ignored; `BLOGS_DIR` changes the folder). When Ghost is configured, `explainer run` also sends it to Ghost as a draft; `--no-ghost` skips that for one run. `explainer push <blog>` sends a saved blog to Ghost later, or updates the draft it already has. `<blog>` is the file (`generated_blogs/my-post.md`), its slug (`my-post`) or the video's URL or ID. Ghost gets the article as generated: edits made to the `.md` file aren't sent.
+Every run saves the finished blog to `generated_blogs/<slug>.md` (git-ignored; `BLOGS_DIR` changes the folder). When Ghost is configured, `yt2blog run` also sends it to Ghost as a draft; `--no-ghost` skips that for one run. `yt2blog push <blog>` sends a saved blog to Ghost later, or updates the draft it already has. `<blog>` is the file (`generated_blogs/my-post.md`), its slug (`my-post`) or the video's URL or ID. Ghost gets the article as generated: edits made to the `.md` file aren't sent.
 
 The folders in `data/` are named after the video ID (`dQw4w9WgXcQ`), because it's the one name known before the article exists and it never changes, so reruns find their cache. Look in `generated_blogs/` for the readable names.
 
@@ -60,19 +61,29 @@ Stages: `metadata` → `transcript` → `generate` → `code` → `checks` → `
 
 There is no separate transcript cleanup: `generate` sends the raw transcript, the metadata and the glossary in one LLM call and the model fixes misheard terms as it writes.
 
-Every stage writes to `data/<video_id>/`: `metadata.json`, `transcript_raw.json`, `article.json` (plus `ghost_posts.json`, the posts offered for internal links), `code_matches.json`, `checks.json`, `article.md`, `article.html`, `jsonld.json`, `ghost_post.json` (only with Ghost) and `log.txt`. `article.md` is the finished post (SEO fields in YAML front matter, then the article body in Markdown), and the render stage copies it to `generated_blogs/<slug>.md`. A stage whose output already exists is skipped, so rerunning `explainer run` on a failed job resumes from the stage that failed. To redo a single step (after editing a prompt, for example), delete its file and everything after it, or use `explainer stage`.
+Every stage writes to `data/<video_id>/`: `metadata.json`, `transcript_raw.json`, `article.json` (plus `ghost_posts.json`, the posts offered for internal links), `code_matches.json`, `checks.json`, `article.md`, `article.html`, `jsonld.json`, `ghost_post.json` (only with Ghost) and `log.txt`. `article.md` is the finished post (SEO fields in YAML front matter, then the article body in Markdown), and the render stage copies it to `generated_blogs/<slug>.md`. A stage whose output already exists is skipped, so rerunning `yt2blog run` on a failed job resumes from the stage that failed. To redo a single step (after editing a prompt, for example), delete its file and everything after it, or use `yt2blog stage`.
 
-`explainer stage ghost <video_id>` updates the job's existing draft (title, body, excerpt, SEO fields, tags and JSON-LD; the feature image and author stay as they are). It refuses when the post has been published, or edited in Ghost since the last push, because the update would overwrite those edits. Use `--force` on `explainer run` to get a new draft instead.
+`yt2blog stage ghost <video_id>` updates the job's existing draft (title, body, excerpt, SEO fields, tags and JSON-LD; the feature image and author stay as they are). It refuses when the post has been published, or edited in Ghost since the last push, because the update would overwrite those edits. Use `--force` on `yt2blog run` to get a new draft instead.
 
 `--force` clears the cached files and makes a new draft, even if one already exists for the video.
 
 ### Quality stages
 
 - **`code`** (needs a GitHub URL in the video description): lists the repo's files through the GitHub API, and two LLM calls match each code block to a file and a line range. Matched blocks are replaced with the lines cut from the real file (the model never writes the code), marked `source: "repo"` and no longer flagged. `code_matches.json` records each match with the code it replaced. `GITHUB_TOKEN` is optional; without it, GitHub allows 60 API requests an hour. Private or missing repos are skipped.
-- **`checks`**: warnings only, never a failure. Word count (600 to 3,000), meta title/description and excerpt lengths, missing intro/takeaways/sections, 25+ word passages copied verbatim from the transcript, code blocks still unverified, section timestamps past the end of the video, HTML outside the allowed tag subset, internal links to unknown posts, and broken external links. The warnings print at the end of `explainer run`.
+- **`checks`**: warnings only, never a failure. Word count (600 to 3,000), meta title/description and excerpt lengths, missing intro/takeaways/sections, 25+ word passages copied verbatim from the transcript, code blocks still unverified, section timestamps past the end of the video, HTML outside the allowed tag subset, internal links to unknown posts, and broken external links. The warnings print at the end of `yt2blog run`.
 - **Internal links**: with `GHOST_CONTENT_API_KEY` set, `generate` passes the site's published posts to the model, which can pick 2 to 4 related ones. They render as a "Related articles" list; a slug that isn't a real published post is dropped.
 
 Prompts live in `prompts/` and the technical glossary in `config/glossary.txt`. You can edit them without changing any code.
+
+## Destinations
+
+The Markdown file in `generated_blogs/` is always written. On top of that, the blog can be sent to a CMS as a draft:
+
+| Destination | State |
+|---|---|
+| Ghost | **Supported** (see [Manual Ghost setup](#manual-ghost-setup)) |
+| Sanity | Planned |
+| Payload CMS | Planned |
 
 ## LLM
 
@@ -112,7 +123,7 @@ Article generation is a single call, with output constrained to the `Article` JS
 ## Manual end-to-end test (local Ghost)
 
 1. Complete the setup above and fill in `.env`.
-2. Pick a Code with Ahsan video that has captions and chapters, then run `explainer run <url>`.
+2. Pick a Code with Ahsan video that has captions and chapters, then run `yt2blog run <url>`.
 3. Check `data/<video_id>/`. Every stage file should exist, and `log.txt` should show token usage for each LLM call.
 4. Open the editor link that gets printed. In Ghost, check that:
    - the post is a **draft**, with the right title, slug, excerpt and the `video-explainer` tag first
@@ -122,9 +133,9 @@ Article generation is a single call, with output constrained to the `Article` JS
    - code blocks are highlighted after previewing (Prism)
    - Post settings → Meta data shows the meta title and description
    - Post settings → Code injection contains the VideoObject JSON-LD
-5. Run `explainer run <url>` again. It should report the existing draft and do nothing.
-6. Run `explainer status` to see the job as `draft_created`.
-7. Without Ghost: leave `GHOST_ADMIN_API_KEY` empty, run `explainer run <url> --force`, and check that the job ends as `article_ready` and `generated_blogs/<slug>.md` has the front matter, embed, watch links and code blocks.
+5. Run `yt2blog run <url>` again. It should report the existing draft and do nothing.
+6. Run `yt2blog status` to see the job as `draft_created`.
+7. Without Ghost: leave `GHOST_ADMIN_API_KEY` empty, run `yt2blog run <url> --force`, and check that the job ends as `article_ready` and `generated_blogs/<slug>.md` has the front matter, embed, watch links and code blocks.
 
 ## Tests
 

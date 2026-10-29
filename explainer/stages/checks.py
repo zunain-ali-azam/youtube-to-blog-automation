@@ -1,7 +1,7 @@
 """Stage 3b: quality checks on the article -> checks.json
 
 Every check produces warnings, never a failure: the job always continues and the
-warnings are printed at the end of `explainer run` for the reviewer.
+warnings are printed at the end of `yt2blog run` for the reviewer.
 
 Checks: length, SEO field lengths, missing parts, passages copied from the
 transcript, code still needing verification, timestamps past the end of the video,

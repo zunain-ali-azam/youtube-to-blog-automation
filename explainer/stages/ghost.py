@@ -168,7 +168,7 @@ def check_updatable(current: dict, last_pushed_at: str | None) -> None:
     if current["updated_at"] != last_pushed_at:
         raise GhostConflict(
             "The Ghost draft was edited after the last push, so updating it would lose those edits. "
-            "Use `explainer run --force` to create a new draft instead"
+            "Use `yt2blog run --force` to create a new draft instead"
         )
 
 

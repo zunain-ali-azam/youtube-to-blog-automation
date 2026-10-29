@@ -46,7 +46,7 @@ STAGE_LABELS = {
 
 def _version() -> str:
     try:
-        return version("explainer")
+        return version("youtube-to-blog-automation")
     except PackageNotFoundError:
         return "dev"
 
@@ -69,11 +69,11 @@ _SHADOW = "#581c87"
 _LOGO_WIDTH = sum(len(rows[0]) for rows in _FONT.values())
 
 _COMMANDS = [
-    ("explainer", "new blog post (this guided run)"),
-    ("explainer run <url>", "the same, without questions"),
-    ("explainer status", "every blog made so far"),
-    ("explainer push <slug>", "send a saved blog to Ghost"),
-    ("explainer start --reconfigure", "enter your API keys again"),
+    ("yt2blog", "new blog post (this guided run)"),
+    ("yt2blog run <url>", "the same, without questions"),
+    ("yt2blog status", "every blog made so far"),
+    ("yt2blog push <slug>", "send a saved blog to Ghost"),
+    ("yt2blog start --reconfigure", "enter your API keys again"),
 ]
 
 

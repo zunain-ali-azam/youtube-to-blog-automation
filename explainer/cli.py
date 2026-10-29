@@ -1,4 +1,4 @@
-"""`explainer` command line."""
+"""`yt2blog` command line."""
 
 import json
 import logging
@@ -67,13 +67,13 @@ def _summary(ctx: Context, seconds: float) -> None:
     body = ctx.path(render.OUTPUT).read_text(encoding="utf-8").split("---", 2)[-1]
     ui.alert("success", article["title"],
              f"{len(body.split()):,} words · {len(article['sections'])} sections · {ctx.settings.llm_model} · {ui.duration(seconds)}")
-    steps = [("explainer", "make another blog"), ("explainer status", "see every blog made so far")]
+    steps = [("yt2blog", "make another blog"), ("yt2blog status", "see every blog made so far")]
     ui.alert("info", Text.assemble("Saved to  ", ui.link(render.blog_path(ctx.settings, article["slug"]))))
     if ctx.path(ghost_stage.OUTPUT).exists():
         _ghost_alert(ctx)
         steps.insert(0, ("open the Ghost link", "review the draft and publish it"))
     else:
-        steps.insert(0, (f"explainer push {article['slug']}", "send it to Ghost as a draft"))
+        steps.insert(0, (f"yt2blog push {article['slug']}", "send it to Ghost as a draft"))
     _print_checks(ctx)
     ui.next_steps(steps)
 
@@ -94,7 +94,7 @@ def _run_pipeline(url: str, force: bool, transcript: Optional[str], ghost: bool 
     if ghost and job and job.get("ghost_post_id") and not force:
         ui.outro("Nothing to do")
         ui.alert("info", "A Ghost draft already exists for this video", job.get("ghost_editor_url") or "")
-        ui.next_steps([(f"explainer run {url} --force", "make a new draft instead")])
+        ui.next_steps([(f"yt2blog run {url} --force", "make a new draft instead")])
         return
     ctx.jobs.upsert(video_id, url=url)
 
@@ -134,7 +134,7 @@ def start(
 ) -> None:
     """Guided run: step-by-step questions, then the whole pipeline."""
     if not sys.stdin.isatty():
-        ui.console.print("The guided run needs an interactive terminal. Use [bold]explainer run <url>[/] instead.")
+        ui.console.print("The guided run needs an interactive terminal. Use [bold]yt2blog run <url>[/] instead.")
         raise typer.Exit(2)
     ui.banner()
     try:
@@ -147,7 +147,7 @@ def start(
 
 @app.callback(invoke_without_command=True)
 def main(ctx: typer.Context) -> None:
-    """Running `explainer` with no command starts the guided run."""
+    """Running `yt2blog` with no command starts the guided run."""
     if ctx.invoked_subcommand is None:
         start(reconfigure=False)
 
@@ -197,10 +197,10 @@ def push(blog: str = typer.Argument(..., help="The blog's file or slug in genera
     video_id = _find_video(blog, load_settings())
     ctx = _context(video_id, None)
     if not ctx.path(render.OUTPUT).exists():
-        ui.alert("error", "That video has no finished blog yet", f"Run: explainer run {video_id}")
+        ui.alert("error", "That video has no finished blog yet", f"Run: yt2blog run {video_id}")
         raise typer.Exit(1)
     if not ghost_stage.is_configured(ctx.settings):
-        ui.alert("error", "Ghost isn't set up", "Set GHOST_URL and GHOST_ADMIN_API_KEY in .env, or run `explainer` and pick Ghost")
+        ui.alert("error", "Ghost isn't set up", "Set GHOST_URL and GHOST_ADMIN_API_KEY in .env, or run `yt2blog` and pick Ghost")
         raise typer.Exit(1)
     try:
         with ui.spinner("Sending to Ghost"):
