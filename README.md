@@ -7,7 +7,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-v0.1.0-d946ef" alt="version 0.1.0">
+  <img src="https://img.shields.io/badge/version-v0.2.0-d946ef" alt="version 0.2.0">
   <img src="https://img.shields.io/badge/python-3.11%2B-3776ab?logo=python&logoColor=white" alt="Python 3.11+">
   <img src="https://img.shields.io/badge/command-yt2blog-a21caf" alt="command: yt2blog">
   <img src="https://img.shields.io/badge/LLM-any%20provider-8b5cf6" alt="LLM: any provider">
