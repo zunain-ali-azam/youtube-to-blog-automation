@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200" role="img" aria-label="yt2blog">
+  <defs>
+    <!-- Same pink-to-magenta ramp as the CLI banner (explainer/ui.py). -->
+    <linearGradient id="tile" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f9a8d4"/>
+      <stop offset="0.45" stop-color="#e879f9"/>
+      <stop offset="1" stop-color="#a21caf"/>
+    </linearGradient>
+    <linearGradient id="ink" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#d946ef"/>
+      <stop offset="1" stop-color="#a21caf"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Video tile with a play button -->
+  <rect x="8" y="22" width="132" height="98" rx="24" fill="url(#tile)"/>
+  <path d="M40 42 L40 88 L78 65 Z" fill="#ffffff" stroke="#ffffff" stroke-width="6" stroke-linejoin="round"/>
+
+  <!-- Blog page coming out of it, with a folded corner -->
+  <path d="M88 72 H158 L188 102 V178 a14 14 0 0 1 -14 14 H88 a14 14 0 0 1 -14 -14 V86 a14 14 0 0 1 14 -14 Z"
+        fill="#fdf4ff" stroke="#581c87" stroke-width="5" stroke-linejoin="round"/>
+  <path d="M158 72 V96 a6 6 0 0 0 6 6 H188" fill="#f5d0fe" stroke="#581c87" stroke-width="5" stroke-linejoin="round"/>
+
+  <!-- Text lines: a heading, then body -->
+  <rect x="92" y="112" width="58" height="10" rx="5" fill="url(#ink)"/>
+  <rect x="92" y="134" width="78" height="7" rx="3.5" fill="#e879f9"/>
+  <rect x="92" y="150" width="70" height="7" rx="3.5" fill="#e879f9"/>
+  <rect x="92" y="166" width="48" height="7" rx="3.5" fill="#e879f9"/>
+</svg>
