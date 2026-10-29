@@ -1,4 +1,4 @@
-"""`explainer compare-transcripts`: captions vs Whisper for one video -> compare_report.md
+"""`yt2blog compare-transcripts`: captions vs Whisper for one video -> compare_report.md
 
 Not a pipeline stage. It shows how far Whisper is from the captions, so you can choose a
 Whisper model and spot terms that belong in the glossary. Manual captions count as the

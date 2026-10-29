@@ -144,7 +144,7 @@ def push(blog: str = typer.Argument(..., help="The blog's file or slug in genera
     video_id = _find_video(blog, load_settings())
     ctx = _context(video_id, None)
     if not ctx.path(render.OUTPUT).exists():
-        typer.secho(f"That video has no finished blog yet; run: explainer run {video_id}", fg="red", err=True)
+        typer.secho(f"That video has no finished blog yet; run: yt2blog run {video_id}", fg="red", err=True)
         raise typer.Exit(1)
     if not ghost_stage.is_configured(ctx.settings):
         typer.secho("Ghost isn't set up: set GHOST_URL and GHOST_ADMIN_API_KEY in .env", fg="red", err=True)

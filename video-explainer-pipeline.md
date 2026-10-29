@@ -7,7 +7,7 @@ Build a command-line tool that takes a YouTube video URL and produces a review-r
 The flow is: paste URL → fetch metadata → fetch captions or transcribe → one LLM call with all the information (metadata, chapters, transcript) → `article.md` → Ghost draft if Ghost is linked.
 
 ```
-explainer run https://www.youtube.com/watch?v=VIDEO_ID
+yt2blog run https://www.youtube.com/watch?v=VIDEO_ID
 ```
 
 ## Context
@@ -210,7 +210,7 @@ Also build the **VideoObject JSON-LD** (name, description, thumbnailUrl, uploadD
 
 - If `SLACK_WEBHOOK_URL` is set, post: article title, Ghost editor link, transcript method, and all warnings from Stage 3b. Otherwise print the same to the terminal.
 
-### Stage 7: Publish webhook (`explainer serve`)
+### Stage 7: Publish webhook (`yt2blog serve`)
 
 - FastAPI endpoint receiving Ghost's `post.published` webhook. Verify the signature if `WEBHOOK_SECRET` is configured.
 - Ignore posts without the primary tag. Match the post to its job by Ghost post ID.
@@ -219,17 +219,17 @@ Also build the **VideoObject JSON-LD** (name, description, thumbnailUrl, uploadD
 ## CLI commands
 
 ```
-explainer run <url> [--force] [--transcript captions|whisper|auto]
-explainer stage <stage_name> <video_id>      # rerun one stage from cache
-explainer status [<video_id>]                # show job(s)
-explainer compare-transcripts <url>          # run captions and whisper, save both + a diff report
-explainer serve [--port 8000]                # webhook receiver
+yt2blog run <url> [--force] [--transcript captions|whisper|auto]
+yt2blog stage <stage_name> <video_id>      # rerun one stage from cache
+yt2blog status [<video_id>]                # show job(s)
+yt2blog compare-transcripts <url>          # run captions and whisper, save both + a diff report
+yt2blog serve [--port 8000]                # webhook receiver
 ```
 
 ## Error handling
 
 - Retry network calls with exponential backoff (3 attempts).
-- On a stage failure, mark the job `failed` with the stage name and error, notify, and exit non-zero. `explainer run` on a failed job resumes from the failed stage.
+- On a stage failure, mark the job `failed` with the stage name and error, notify, and exit non-zero. `yt2blog run` on a failed job resumes from the failed stage.
 - Log to console and `data/<video_id>/log.txt`.
 
 ## Testing
