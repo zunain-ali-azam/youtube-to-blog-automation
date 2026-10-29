@@ -34,12 +34,21 @@ Phase 1 needs `YOUTUBE_API_KEY` and an API key for your LLM provider (see [LLM](
 ## Usage
 
 ```bash
+explainer                                               # guided run (same as `explainer start`)
 explainer run <url> [--force] [--no-ghost] [--transcript captions|whisper|auto]   # whole pipeline
 explainer stage <stage> <video_id>                      # rerun one stage from cache
 explainer push <blog>                                   # send a saved blog to Ghost
 explainer status [<video_id>]                           # show jobs
 explainer compare-transcripts <url> [--force]           # captions vs Whisper report
 ```
+
+`explainer` with no command (or `explainer start`) is the guided run. It opens with a welcome banner (block-letter logo, version, the commands and controls), then asks one step at a time down a single rail. Each answered step collapses to its answer (`◇  Model / │  claude-opus-5-5`), so the screen reads as a timeline:
+
+1. The YouTube key, the LLM provider, that provider's key and the model. Saved keys show masked (`sk-a…hijk  (saved)`) and aren't asked again; the saved model is one Enter to keep. The model list comes live from the provider with your key, and long lists filter as you type. `.env` is created from `.env.example` if there isn't one, and what you enter is saved there.
+2. The video URL (checked when you press Enter) and the transcript source. The Whisper options are greyed out until the Whisper extra is installed.
+3. Whether to also send the blog to Ghost as a draft (asking for the Ghost keys if they aren't saved yet). The blog is saved to `generated_blogs/` either way.
+
+After **Start generating?**, the stages run as a live checklist on the same rail. The run ends with `SUCCESS`/`INFO`/`WARNING` lines (title, length, where the blog went, quality warnings) and the next commands to run. On a failure you get an `ERROR` line with the stage and the error, plus the log file; running again resumes from that stage. Ctrl+C or Esc at any step cancels without running anything. `explainer start --reconfigure` asks for every key again.
 
 Every run saves the finished blog to `generated_blogs/<slug>.md` (git-ignored; `BLOGS_DIR` changes the folder). When Ghost is configured, `explainer run` also sends it to Ghost as a draft; `--no-ghost` skips that for one run. `explainer push <blog>` sends a saved blog to Ghost later, or updates the draft it already has. `<blog>` is the file (`generated_blogs/my-post.md`), its slug (`my-post`) or the video's URL or ID. Ghost gets the article as generated: edits made to the `.md` file aren't sent.
 
@@ -67,7 +76,7 @@ Prompts live in `prompts/` and the technical glossary in `config/glossary.txt`. 
 
 ## LLM
 
-Any LLM provider works. `LLM_PROVIDER` picks it, and its key goes in that provider's own variable, so you can keep several keys and switch by changing `LLM_PROVIDER`:
+Any LLM provider works. `LLM_PROVIDER` picks it, and its key goes in that provider's own variable, so you can keep several keys and switch by changing `LLM_PROVIDER` (the guided run asks for the provider, then for its key if it isn't saved yet):
 
 | `LLM_PROVIDER` | Key variable | Notes |
 |---|---|---|
