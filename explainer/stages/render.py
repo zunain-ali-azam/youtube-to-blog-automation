@@ -2,7 +2,8 @@
 
 `article.md` is the main deliverable: a complete blog post with the SEO fields in
 YAML front matter, ready to read, edit or paste into any CMS. `article.html` and
-`jsonld.json` are what the Ghost stage posts. `jsonld.json` is a list: the
+`jsonld.json` are what the Ghost stage posts. A copy of `article.md` is kept as
+generated_blogs/<slug>.md, the folder where every finished blog ends up. `jsonld.json` is a list: the
 VideoObject, plus an FAQPage when the article has FAQs.
 
 The article's body fields are a small HTML subset (see prompts/generate_article.md),
@@ -17,7 +18,9 @@ import logging
 import re
 from html import escape, unescape
 from html.parser import HTMLParser
+from pathlib import Path
 
+from explainer.config import Settings
 from explainer.context import Context
 from explainer.models import Article, CodeBlock, VideoMetadata
 from explainer.stages import generate, metadata as metadata_stage
@@ -292,6 +295,15 @@ def run(ctx: Context) -> None:
     links = resolve_links(article, posts)
     ctx.path(HTML_OUTPUT).write_text(build_html(article, meta, links), encoding="utf-8")
     ctx.save_json(JSONLD_OUTPUT, jsonld)
+    markdown = build_markdown(article, meta, jsonld, links)
+    blog = blog_path(ctx.settings, article.slug)
+    blog.parent.mkdir(parents=True, exist_ok=True)
+    blog.write_text(markdown, encoding="utf-8")
     # Written last: it is the file the pipeline checks to skip this stage.
-    ctx.path(OUTPUT).write_text(build_markdown(article, meta, jsonld, links), encoding="utf-8")
-    log.info("Article written: %s", ctx.path(OUTPUT))
+    ctx.path(OUTPUT).write_text(markdown, encoding="utf-8")
+    log.info("Article written: %s", blog)
+
+
+def blog_path(settings: Settings, slug: str) -> Path:
+    """Where the finished blog is kept: generated_blogs/<slug>.md."""
+    return settings.blogs_dir / f"{slug}.md"

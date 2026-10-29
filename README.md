@@ -1,6 +1,6 @@
 # Video Explainer Pipeline
 
-Turns a YouTube video into a review-ready blog article: a restructured written explainer with the video embedded, timestamped "watch this part" links, SEO metadata and VideoObject JSON-LD. The result is `data/<video_id>/article.md`. If Ghost is configured, the article is also posted as a Ghost **draft**, and a human reviews and publishes it there.
+Turns a YouTube video into a review-ready blog article: a restructured written explainer with the video embedded, timestamped "watch this part" links, SEO metadata and VideoObject JSON-LD. Every finished blog is saved to `generated_blogs/<slug>.md`. It can also go to Ghost as a **draft**, during the run or later with `explainer push`, and a human reviews and publishes it there.
 
 The full spec is in [`video-explainer-pipeline.md`](video-explainer-pipeline.md).
 
@@ -27,18 +27,23 @@ cp .env.example .env    # then fill it in
 
 **Local Whisper (optional):** `.venv/bin/pip install -e ".[whisper]"` adds faster-whisper and yt-dlp. Set `TRANSCRIPT_METHOD=auto` to use captions when a video has them and transcribe locally when it doesn't, or `whisper` to always transcribe. It's free and runs on your machine; the model downloads on first use (`small` is about 500 MB). No system ffmpeg is needed. yt-dlp works best with [deno](https://deno.com) installed, since YouTube extraction without a JavaScript runtime is deprecated.
 
-Phase 1 needs `YOUTUBE_API_KEY` and an API key for your LLM provider (see [LLM](#llm)). Ghost is optional: set `GHOST_URL` and `GHOST_ADMIN_API_KEY` to also get a Ghost draft, or leave the key empty to stop at `article.md`. `GHOST_AUTHOR_EMAIL` is optional; without it, Ghost credits the site owner. Set `SITE_URL` to the public blog base (for example `https://iomechs.com/blog`) when another site displays the posts through the Content API: the draft's canonical URL becomes `SITE_URL/<slug>`. The draft also gets Open Graph and Twitter titles and descriptions (copied from the meta fields, since a headless front end has no theme to fall back on), and `codeinjection_head` holds the VideoObject and FAQPage JSON-LD, which that site has to put into its `<head>` itself.
+Phase 1 needs `YOUTUBE_API_KEY` and an API key for your LLM provider (see [LLM](#llm)). Ghost is optional: set `GHOST_URL` and `GHOST_ADMIN_API_KEY` to also get a Ghost draft, or leave the key empty to stop at the Markdown file. `GHOST_AUTHOR_EMAIL` is optional; without it, Ghost credits the site owner. Set `SITE_URL` to the public blog base (for example `https://iomechs.com/blog`) when another site displays the posts through the Content API: the draft's canonical URL becomes `SITE_URL/<slug>`. The draft also gets Open Graph and Twitter titles and descriptions (copied from the meta fields, since a headless front end has no theme to fall back on), and `codeinjection_head` holds the VideoObject and FAQPage JSON-LD, which that site has to put into its `<head>` itself.
 
 **YouTube API key:** Google Cloud Console → APIs & Services → enable *YouTube Data API v3* → Credentials → *Create API key*. Restrict the key to that API.
 
 ## Usage
 
 ```bash
-explainer run <url> [--force] [--transcript captions|whisper|auto]   # whole pipeline
+explainer run <url> [--force] [--no-ghost] [--transcript captions|whisper|auto]   # whole pipeline
 explainer stage <stage> <video_id>                      # rerun one stage from cache
+explainer push <blog>                                   # send a saved blog to Ghost
 explainer status [<video_id>]                           # show jobs
 explainer compare-transcripts <url> [--force]           # captions vs Whisper report
 ```
+
+Every run saves the finished blog to `generated_blogs/<slug>.md` (git-ignored; `BLOGS_DIR` changes the folder). When Ghost is configured, `explainer run` also sends it to Ghost as a draft; `--no-ghost` skips that for one run. `explainer push <blog>` sends a saved blog to Ghost later, or updates the draft it already has. `<blog>` is the file (`generated_blogs/my-post.md`), its slug (`my-post`) or the video's URL or ID. Ghost gets the article as generated: edits made to the `.md` file aren't sent.
+
+The folders in `data/` are named after the video ID (`dQw4w9WgXcQ`), because it's the one name known before the article exists and it never changes, so reruns find their cache. Look in `generated_blogs/` for the readable names.
 
 `compare-transcripts` needs the Whisper extra. It saves `transcript_captions.json`, `transcript_whisper_<model>.json` and `compare_report_<model>.md` to `data/<video_id>/` (one Whisper transcript and report per `WHISPER_MODEL`, so you can compare models on the same video): the word error rate (or the disagreement rate, when the captions are auto-generated), the most frequent differences as glossary candidates, and every difference with a timestamp link. Both transcripts are cached; `--force` fetches them again. Use it to pick a `WHISPER_MODEL` before trusting Whisper on videos without captions.
 
@@ -46,7 +51,7 @@ Stages: `metadata` → `transcript` → `generate` → `code` → `checks` → `
 
 There is no separate transcript cleanup: `generate` sends the raw transcript, the metadata and the glossary in one LLM call and the model fixes misheard terms as it writes.
 
-Every stage writes to `data/<video_id>/`: `metadata.json`, `transcript_raw.json`, `article.json` (plus `ghost_posts.json`, the posts offered for internal links), `code_matches.json`, `checks.json`, `article.md`, `article.html`, `jsonld.json`, `ghost_post.json` (only with Ghost) and `log.txt`. `article.md` is the finished post: SEO fields in YAML front matter, then the article body in Markdown. A stage whose output already exists is skipped, so rerunning `explainer run` on a failed job resumes from the stage that failed. To redo a single step (after editing a prompt, for example), delete its file and everything after it, or use `explainer stage`.
+Every stage writes to `data/<video_id>/`: `metadata.json`, `transcript_raw.json`, `article.json` (plus `ghost_posts.json`, the posts offered for internal links), `code_matches.json`, `checks.json`, `article.md`, `article.html`, `jsonld.json`, `ghost_post.json` (only with Ghost) and `log.txt`. `article.md` is the finished post (SEO fields in YAML front matter, then the article body in Markdown), and the render stage copies it to `generated_blogs/<slug>.md`. A stage whose output already exists is skipped, so rerunning `explainer run` on a failed job resumes from the stage that failed. To redo a single step (after editing a prompt, for example), delete its file and everything after it, or use `explainer stage`.
 
 `explainer stage ghost <video_id>` updates the job's existing draft (title, body, excerpt, SEO fields, tags and JSON-LD; the feature image and author stay as they are). It refuses when the post has been published, or edited in Ghost since the last push, because the update would overwrite those edits. Use `--force` on `explainer run` to get a new draft instead.
 
@@ -110,7 +115,7 @@ Article generation is a single call, with output constrained to the `Article` JS
    - Post settings → Code injection contains the VideoObject JSON-LD
 5. Run `explainer run <url>` again. It should report the existing draft and do nothing.
 6. Run `explainer status` to see the job as `draft_created`.
-7. Without Ghost: leave `GHOST_ADMIN_API_KEY` empty, run `explainer run <url> --force`, and check that the job ends as `article_ready` and `data/<video_id>/article.md` has the front matter, embed, watch links and code blocks.
+7. Without Ghost: leave `GHOST_ADMIN_API_KEY` empty, run `explainer run <url> --force`, and check that the job ends as `article_ready` and `generated_blogs/<slug>.md` has the front matter, embed, watch links and code blocks.
 
 ## Tests
 

@@ -1,6 +1,8 @@
 """`explainer` command line."""
 
+import json
 import logging
+from pathlib import Path
 from typing import Optional
 
 import typer
@@ -11,7 +13,7 @@ from explainer.config import ConfigError, Settings, load_settings
 from explainer.context import Context
 from explainer.jobs import JobStore
 from explainer.pipeline import STAGE_NAMES, StageFailed, get_stage, run_all, run_stage
-from explainer.stages import checks, render
+from explainer.stages import checks, generate, ghost as ghost_stage, render
 from explainer.urls import parse_video_id
 
 app = typer.Typer(add_completion=False, help="Turn a YouTube video into a blog article (Markdown, and a Ghost draft if Ghost is set up).")
@@ -43,11 +45,11 @@ def _video_id(value: str) -> str:
         raise typer.BadParameter(str(exc)) from exc
 
 
-def _context(video_id: str, transcript: Optional[str]) -> Context:
+def _context(video_id: str, transcript: Optional[str], ghost: bool = True) -> Context:
     settings = load_settings()
     _setup_logging(settings, video_id)
     jobs = JobStore(settings.data_dir / "jobs.db")
-    return Context(video_id, settings, jobs, transcript or settings.transcript_method)
+    return Context(video_id, settings, jobs, transcript or settings.transcript_method, ghost=ghost)
 
 
 def _print_job(job: dict) -> None:
@@ -74,13 +76,14 @@ def run(
     url: str,
     force: bool = typer.Option(False, "--force", help="Rerun every stage and create a new draft."),
     transcript: Optional[str] = typer.Option(None, "--transcript", help="captions | whisper | auto"),
+    no_ghost: bool = typer.Option(False, "--no-ghost", help="Don't send to Ghost (the blog is still saved to generated_blogs/)."),
 ) -> None:
     """Run the whole pipeline for a video URL."""
     video_id = _video_id(url)
-    ctx = _context(video_id, transcript)
+    ctx = _context(video_id, transcript, ghost=not no_ghost)
 
     job = ctx.jobs.get(video_id)
-    if job and job.get("ghost_post_id") and not force:
+    if ctx.ghost and job and job.get("ghost_post_id") and not force:
         typer.echo("A Ghost draft already exists for this video (use --force to make a new one):")
         _print_job(job)
         return
@@ -92,7 +95,8 @@ def run(
         typer.secho(str(exc), fg="red", err=True)
         raise typer.Exit(1)
     _print_job(ctx.jobs.get(video_id))
-    typer.echo(f"  article: {ctx.path(render.OUTPUT)}")
+    slug = ctx.load_json(generate.OUTPUT)["slug"]
+    typer.secho(f"  blog: {render.blog_path(ctx.settings, slug)}", fg="green")
     _print_checks(ctx)
 
 
@@ -116,6 +120,41 @@ def stage(
     typer.echo(f"Stage {name} done: {ctx.path(selected.output)}")
     if name == "checks":
         _print_checks(ctx)
+
+
+def _find_video(blog: str, settings: Settings) -> str:
+    """The video behind a blog: its file or slug in generated_blogs/, or a video URL or ID."""
+    slug = Path(blog).stem
+    # Slugs first: an 11-character slug would also pass as a video ID.
+    for article in settings.data_dir.glob(f"*/{generate.OUTPUT}"):
+        if json.loads(article.read_text(encoding="utf-8")).get("slug") == slug:
+            return article.parent.name
+    try:
+        return parse_video_id(blog)
+    except ValueError:
+        raise typer.BadParameter(f"No blog named {slug!r} in {settings.blogs_dir}, and it isn't a video URL or ID either")
+
+
+@app.command()
+def push(blog: str = typer.Argument(..., help="The blog's file or slug in generated_blogs/, or its video URL or ID.")) -> None:
+    """Send a generated blog to Ghost as a draft, or update the draft it already has.
+
+    Ghost gets the article as generated; edits made to the .md file aren't sent.
+    """
+    video_id = _find_video(blog, load_settings())
+    ctx = _context(video_id, None)
+    if not ctx.path(render.OUTPUT).exists():
+        typer.secho(f"That video has no finished blog yet; run: explainer run {video_id}", fg="red", err=True)
+        raise typer.Exit(1)
+    if not ghost_stage.is_configured(ctx.settings):
+        typer.secho("Ghost isn't set up: set GHOST_URL and GHOST_ADMIN_API_KEY in .env", fg="red", err=True)
+        raise typer.Exit(1)
+    try:
+        run_stage(ctx, get_stage("ghost"))
+    except (StageFailed, ConfigError) as exc:
+        typer.secho(str(exc), fg="red", err=True)
+        raise typer.Exit(1)
+    typer.echo(f"Ghost draft: {ctx.load_json(ghost_stage.OUTPUT)['editor_url']}")
 
 
 @app.command()

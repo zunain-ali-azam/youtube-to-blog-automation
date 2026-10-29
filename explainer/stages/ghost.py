@@ -178,6 +178,9 @@ def _existing_post_id(ctx: Context) -> str | None:
 
 
 def run(ctx: Context) -> None:
+    if not ctx.ghost:
+        log.info("Not sending this run to Ghost, skipping the draft")
+        return
     if not is_configured(ctx.settings):
         log.info("Ghost is not configured (GHOST_ADMIN_API_KEY is empty), skipping the draft")
         return

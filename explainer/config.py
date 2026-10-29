@@ -61,6 +61,8 @@ class Settings(BaseModel):
     webhook_secret: str = ""
 
     data_dir: Path = ROOT / "data"
+    # Every finished blog is copied here as <slug>.md, whether or not it also goes to Ghost.
+    blogs_dir: Path = ROOT / "generated_blogs"
 
     @field_validator("llm_provider")
     @classmethod

@@ -161,3 +161,45 @@ def test_list_items_keep_inline_code():
     article = _article().model_copy(update={"learning_points": ["Call <code>signal()</code> to create one"]})
     assert "<li>Call <code>signal()</code> to create one</li>" in build_html(article, _meta())
     assert "- Call `signal()` to create one" in build_markdown(article, _meta(), {})
+
+
+def _render_ctx(tmp_path):
+    from explainer.context import Context
+    from explainer.jobs import JobStore
+    from explainer.stages import generate, metadata
+
+    settings = Settings(data_dir=tmp_path / "data", blogs_dir=tmp_path / "blogs")
+    ctx = Context("dQw4w9WgXcQ", settings, JobStore(tmp_path / "jobs.db"), "captions")
+    ctx.save_model(generate.OUTPUT, _article())
+    ctx.save_model(metadata.OUTPUT, _meta())
+    return ctx
+
+
+def test_render_saves_blog_to_blogs_dir(tmp_path):
+    from explainer.stages import render
+
+    ctx = _render_ctx(tmp_path)
+    render.run(ctx)
+    blog = tmp_path / "blogs" / "angular-signals.md"
+    assert blog.read_text(encoding="utf-8") == ctx.path(render.OUTPUT).read_text(encoding="utf-8")
+
+
+def test_ghost_skipped_when_run_says_no(tmp_path):
+    from explainer.stages import ghost
+
+    ctx = _render_ctx(tmp_path)
+    ctx.settings = ctx.settings.model_copy(update={"ghost_admin_api_key": KEY})
+    ctx.ghost = False
+    ghost.run(ctx)
+    assert not ctx.path(ghost.OUTPUT).exists()
+
+
+def test_push_finds_blog_by_slug_before_video_id(tmp_path):
+    from explainer.cli import _find_video
+
+    ctx = _render_ctx(tmp_path)
+    # An 11-character slug would also pass as a video ID; the blog must win.
+    ctx.save_model("article.json", _article().model_copy(update={"slug": "angular-sig"}))
+    assert _find_video("angular-sig", ctx.settings) == "dQw4w9WgXcQ"
+    assert _find_video("blogs/angular-sig.md", ctx.settings) == "dQw4w9WgXcQ"
+    assert _find_video("https://youtu.be/abcdefghijk", ctx.settings) == "abcdefghijk"

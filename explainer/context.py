@@ -19,6 +19,8 @@ class Context:
     settings: Settings
     jobs: JobStore
     transcript_method: str
+    # False when the user chose not to send this run to Ghost.
+    ghost: bool = True
 
     @property
     def dir(self) -> Path:
