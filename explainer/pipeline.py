@@ -7,7 +7,7 @@ from typing import Callable
 
 from explainer.config import ConfigError
 from explainer.context import Context
-from explainer.stages import checks, code_fetch, generate, ghost, metadata, render, transcript
+from explainer.stages import checks, code_fetch, generate, ghost, metadata, render, sanity, transcript
 
 log = logging.getLogger(__name__)
 
@@ -19,16 +19,26 @@ class Stage:
     run: Callable[[Context], None]
 
 
-STAGES = [
+CORE_STAGES = [
     Stage("metadata", metadata.OUTPUT, metadata.run),
     Stage("transcript", transcript.OUTPUT, transcript.run),
     Stage("generate", generate.OUTPUT, generate.run),
     Stage("code", code_fetch.OUTPUT, code_fetch.run),
     Stage("checks", checks.OUTPUT, checks.run),
     Stage("render", render.OUTPUT, render.run),
-    Stage("ghost", ghost.OUTPUT, ghost.run),
 ]
+# One per CMS, named after its DESTINATION value. A run ends with the one it was sent to.
+DESTINATION_STAGES = [
+    Stage("ghost", ghost.OUTPUT, ghost.run),
+    Stage("sanity", sanity.OUTPUT, sanity.run),
+]
+STAGES = CORE_STAGES + DESTINATION_STAGES
 STAGE_NAMES = [s.name for s in STAGES]
+
+
+def stages_for(destination: str) -> list[Stage]:
+    """The stages one run goes through: the core ones, then its destination's, if any."""
+    return CORE_STAGES + [s for s in DESTINATION_STAGES if s.name == destination]
 
 
 class StageFailed(Exception):
@@ -61,10 +71,10 @@ def finish(ctx: Context) -> None:
     job = ctx.jobs.get(ctx.video_id) or {}
     if job.get("status") == "published":
         status = "published"
-    elif ctx.path(ghost.OUTPUT).exists():
+    elif any(ctx.path(s.output).exists() for s in DESTINATION_STAGES):
         status = "draft_created"
     elif ctx.path(render.OUTPUT).exists():
-        # Without Ghost the job ends at article.md.
+        # Without a CMS the job ends at article.md.
         status = "article_ready"
     else:
         status = "pending"
@@ -78,11 +88,12 @@ def _ignore(name: str, event: str) -> None:
 def run_all(ctx: Context, force: bool = False, on_stage: Callable[[str, str], None] = _ignore) -> None:
     """Run every stage. `on_stage(name, event)` reports progress for the terminal UI; event
     is running, done, skipped (the stage chose to write nothing), cached or failed."""
+    stages = stages_for(ctx.destination)
     if force:
         # Clear cached outputs so every stage runs again.
-        for stage in STAGES:
+        for stage in stages:
             ctx.path(stage.output).unlink(missing_ok=True)
-    for stage in STAGES:
+    for stage in stages:
         if ctx.path(stage.output).exists():
             log.info("Stage %s: cached, skipping", stage.name)
             on_stage(stage.name, "cached")

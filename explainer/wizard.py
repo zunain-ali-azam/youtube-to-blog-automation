@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from dotenv import load_dotenv, set_key
 
 from explainer import llm, prompts, ui
-from explainer.config import DEFAULT_ANTHROPIC_MODEL, LLM_PROVIDERS, ROOT
+from explainer.config import DEFAULT_ANTHROPIC_MODEL, DESTINATIONS, LLM_PROVIDERS, ROOT
 from explainer.prompts import Option
 from explainer.urls import parse_video_id
 
@@ -22,7 +22,7 @@ _TYPE_IT = "__type__"
 class Plan:
     url: str
     transcript: str
-    ghost: bool
+    destination: str  # a key of DESTINATIONS
 
 
 def ask(reconfigure: bool) -> Plan:
@@ -37,13 +37,11 @@ def ask(reconfigure: bool) -> Plan:
     url = prompts.text("YouTube video URL", validate=_check_url)
     transcript = _transcript()
 
-    # The blog is always saved to generated_blogs/; Ghost is on top of that.
-    ghost = prompts.confirm("Also send it to Ghost as a draft?", default=bool(_env("GHOST_ADMIN_API_KEY")))
-    if ghost:
-        _ghost(reconfigure)
+    destination = _destination(reconfigure)
 
-    plan = Plan(url, transcript, ghost)
-    prompts.done("Ready to go", f"{parse_video_id(url)} · {model} · {transcript} · {'generated_blogs/ + Ghost' if ghost else 'generated_blogs/'}")
+    plan = Plan(url, transcript, destination)
+    where = "generated_blogs/" + ("" if destination == "none" else f" + {DESTINATIONS[destination]}")
+    prompts.done("Ready to go", f"{parse_video_id(url)} · {model} · {transcript} · {where}")
     if not prompts.confirm("Start generating?"):
         raise KeyboardInterrupt
     return plan
@@ -113,6 +111,36 @@ def _transcript() -> str:
         Option("whisper", "Whisper", "transcribes on this machine; slower, works without captions", needs_whisper),
         Option("auto", "Auto", "captions when the video has them, otherwise Whisper", needs_whisper),
     ], saved if whisper or saved == "captions" else "captions")
+
+
+def _destination(reconfigure: bool) -> str:
+    """Where the blog goes besides generated_blogs/ (always written), with that CMS's keys."""
+    saved = _env("DESTINATION") or ("ghost" if _env("GHOST_ADMIN_API_KEY") else "none")
+    destination = prompts.select("Also send it to a CMS as a draft?", [
+        Option("none", "No", "only save it to generated_blogs/"),
+        Option("ghost", "Ghost"),
+        Option("sanity", "Sanity", "needs the schema in cms/sanity/ added to your Studio"),
+    ], saved if saved in DESTINATIONS else "none")
+    _save("DESTINATION", destination)
+    if destination == "ghost":
+        _ghost(reconfigure)
+    elif destination == "sanity":
+        _sanity(reconfigure)
+    return destination
+
+
+def _sanity(reconfigure: bool) -> None:
+    if _env("SANITY_PROJECT_ID") and _env("SANITY_API_TOKEN") and not reconfigure:
+        dataset = _env("SANITY_DATASET") or "production"
+        prompts.done("Sanity", f"{_env('SANITY_PROJECT_ID')}/{dataset} · {ui.mask(_env('SANITY_API_TOKEN'))}  (saved)")
+        return
+    _save("SANITY_PROJECT_ID", prompts.text("Sanity project ID", default=_env("SANITY_PROJECT_ID"), validate=_required))
+    _save("SANITY_DATASET", prompts.text("Sanity dataset", default=_env("SANITY_DATASET") or "production", validate=_required))
+    _save("SANITY_API_TOKEN", prompts.text("Sanity API token (Editor)", validate=_required, secret=True, shown_as=ui.mask))
+    studio = prompts.text("Sanity Studio URL (optional, for draft links; Enter to skip)",
+                          default=_env("SANITY_STUDIO_URL"), shown_as=lambda v: v or "(skipped)")
+    if studio:
+        _save("SANITY_STUDIO_URL", studio)
 
 
 def _ghost(reconfigure: bool) -> None:

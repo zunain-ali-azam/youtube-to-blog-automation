@@ -14,6 +14,8 @@ COLUMNS = [
     "transcript_method",
     "ghost_post_id",
     "ghost_editor_url",
+    "sanity_document_id",  # without the drafts. prefix
+    "sanity_editor_url",
     "published_url",
     "created_at",
     "updated_at",
@@ -37,6 +39,11 @@ class JobStore:
         self._conn = sqlite3.connect(db_path)
         self._conn.row_factory = sqlite3.Row
         self._conn.execute(_SCHEMA)
+        # Databases made by older versions lack the newer columns.
+        existing = {row[1] for row in self._conn.execute("PRAGMA table_info(jobs)")}
+        for column in COLUMNS:
+            if column not in existing:
+                self._conn.execute(f"ALTER TABLE jobs ADD COLUMN {column} TEXT")
         self._conn.commit()
 
     def get(self, video_id: str) -> dict | None:

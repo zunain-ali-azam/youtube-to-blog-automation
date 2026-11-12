@@ -41,6 +41,7 @@ STAGE_LABELS = {
     "checks": "Running quality checks",
     "render": "Rendering Markdown and HTML",
     "ghost": "Creating the Ghost draft",
+    "sanity": "Creating the Sanity draft",
 }
 
 
@@ -167,8 +168,8 @@ _EVENTS = {
 class StageProgress:
     """The pipeline as one rail step; pass `update` to run_all as on_stage."""
 
-    def __init__(self, notes: dict[str, str] | None = None):
-        self.state = {name: "pending" for name in STAGE_NAMES}
+    def __init__(self, notes: dict[str, str] | None = None, stages: list[str] = STAGE_NAMES):
+        self.state = {name: "pending" for name in stages}
         self.started: dict[str, float] = {}
         self.took: dict[str, float] = {}
         self.notes = notes or {}
@@ -207,8 +208,7 @@ class StageProgress:
             head = Text("■", style="red")
         else:
             head = Spinner("circleHalves", style="magenta")
-        for name in STAGE_NAMES:
-            event = self.state[name]
+        for name, event in self.state.items():
             quiet = event in ("pending", "skipped", "cached")
             label = Text(STAGE_LABELS[name], style="bold" if event == "running" else "dim" if quiet else "")
             if note := self.notes.get(name):

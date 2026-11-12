@@ -189,7 +189,7 @@ def test_ghost_skipped_when_run_says_no(tmp_path):
 
     ctx = _render_ctx(tmp_path)
     ctx.settings = ctx.settings.model_copy(update={"ghost_admin_api_key": KEY})
-    ctx.ghost = False
+    ctx.destination = "none"
     ghost.run(ctx)
     assert not ctx.path(ghost.OUTPUT).exists()
 

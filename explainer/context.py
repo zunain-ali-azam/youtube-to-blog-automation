@@ -19,8 +19,8 @@ class Context:
     settings: Settings
     jobs: JobStore
     transcript_method: str
-    # False when the user chose not to send this run to Ghost.
-    ghost: bool = True
+    # The CMS this run goes to (a key of config.DESTINATIONS); "none" for generated_blogs/ only.
+    destination: str = "ghost"
 
     @property
     def dir(self) -> Path:
