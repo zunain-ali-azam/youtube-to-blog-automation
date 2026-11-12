@@ -113,7 +113,7 @@ Settings live in `.env` at the project root (see [`.env.example`](.env.example))
 | `SANITY_STUDIO_URL` | | Studio address (`http://localhost:3333`), for links to the draft |
 | `SANITY_POST_TYPE` | `post` | Document type of a post |
 | `SANITY_FIELDS` | | Field renames, e.g. `content=body,coverImage=mainImage,seo=-` (see [Sanity setup](#sanity-setup)) |
-| `SITE_URL` | | Public blog base, e.g. `https://iomechs.com/blog`; sets the canonical URL to `SITE_URL/<slug>` |
+| `SITE_URL` | | Public blog base, e.g. `https://example.com/blog`; sets the canonical URL to `SITE_URL/<slug>` |
 | `GITHUB_TOKEN` | | Raises the GitHub API limit above 60 requests an hour |
 | `BLOGS_DIR` | `generated_blogs/` | Where finished blogs are saved |
 | `DATA_DIR` | `data/` | Where each video's stage files are cached |
@@ -240,7 +240,7 @@ The Markdown file in `generated_blogs/` is always written. On top of that, the b
 1. **Install Ghost locally**: `npm i -g ghost-cli && mkdir ghost-local && cd ghost-local && ghost install local`, or run it with Docker (`docker run -d -p 2368:2368 -e NODE_ENV=development ghost`). Then open `http://localhost:2368/ghost` and create the owner account.
 2. **Settings → Integrations → Add custom integration** ("Video Explainer"). Copy the **Admin API key** into `GHOST_ADMIN_API_KEY` and the **Content API key** into `GHOST_CONTENT_API_KEY`.
 3. In the same integration, add a webhook for **Post published** pointing at the webhook server (Phase 4; use ngrok if Ghost can't reach your machine).
-4. **Settings → Staff**: invite a placeholder user ("Ahsan Test") and put their email in `GHOST_AUTHOR_EMAIL`.
+4. **Settings → Staff**: invite a placeholder user ("Test Author") and put their email in `GHOST_AUTHOR_EMAIL`.
 5. **Settings → Code injection → Site header/footer**: add Prism.js for syntax highlighting:
    ```html
    <!-- Site header -->
@@ -287,7 +287,7 @@ Unit tests cover URL parsing, chapter parsing, ISO 8601 durations, JWT generatio
 ### Manual end-to-end test (local Ghost)
 
 1. Complete the [Ghost setup](#ghost-setup) and fill in `.env`.
-2. Pick a Code with Ahsan video that has captions and chapters, then run `yt2blog run <url>`.
+2. Pick a tutorial video that has captions and chapters, then run `yt2blog run <url>`.
 3. Check `data/<video_id>/`. Every stage file should exist, and `log.txt` should show token usage for each LLM call.
 4. Open the editor link that gets printed. In Ghost, check that:
    - the post is a **draft**, with the right title, slug, excerpt and the `video-explainer` tag first

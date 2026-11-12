@@ -12,8 +12,8 @@ yt2blog run https://www.youtube.com/watch?v=VIDEO_ID
 
 ## Context
 
-- The videos come from the **Code with Ahsan** YouTube channel (technical tutorials: Angular, React, JavaScript, AI, Google Gemini, Google ADK). Ahsan is a co-founder of IOMechs, and the articles will eventually live on the IOMechs Ghost site.
-- **This is currently a practice build** using my personal accounts: a local Ghost install, my own Google Cloud project, and my own Slack (optional). Nothing should be published publicly. All credentials and site-specific values must come from config so switching to the IOMechs production setup is only a config change.
+- The videos are technical tutorials (Angular, React, JavaScript, AI, Google Gemini, Google ADK) from a YouTube channel whose articles will live on a Ghost site.
+- **This is currently a practice build** using my personal accounts: a local Ghost install, my own Google Cloud project, and my own Slack (optional). Nothing should be published publicly. All credentials and site-specific values must come from config so switching to a production setup is only a config change.
 - Articles must be genuinely restructured written explainers, **not transcripts**. The video is embedded and linked as a companion.
 
 ## Working instructions for Claude Code
@@ -54,7 +54,7 @@ ANTHROPIC_MODEL=
 GHOST_URL=http://localhost:2368
 GHOST_ADMIN_API_KEY=                  # format id:secret
 GHOST_CONTENT_API_KEY=
-GHOST_AUTHOR_EMAIL=                   # staff user to credit (placeholder "Ahsan Test" in practice)
+GHOST_AUTHOR_EMAIL=                   # staff user to credit (e.g. a placeholder "Test Author")
 GHOST_PRIMARY_TAG=video-explainer
 
 # GitHub (optional, raises rate limits)
@@ -193,7 +193,7 @@ Produce a list of warnings (do not fail the job):
 3. Sections, each with a link like `Watch this part (4:32)` pointing to `https://www.youtube.com/watch?v=VIDEO_ID&t=272s`
 4. Code as `<pre><code class="language-xxx">` (escaped)
 5. Key takeaways, FAQ
-6. Credit block: video by Ahsan, links to the YouTube channel and the video
+6. Credit block: video by the channel's author, links to the YouTube channel and the video
 
 Also build the **VideoObject JSON-LD** (name, description, thumbnailUrl, uploadDate, duration, embedUrl, contentUrl) for the post's `codeinjection_head`.
 

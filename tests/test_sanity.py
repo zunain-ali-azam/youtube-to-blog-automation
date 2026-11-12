@@ -17,7 +17,7 @@ VID = "dQw4w9WgXcQ"
 def _meta(**update) -> VideoMetadata:
     fields = dict(
         video_id=VID, title="Signals & <You>", description="d", published_at="2025-03-01T14:00:00Z",
-        duration_iso="PT10M", duration_seconds=600, channel_title="Code with Ahsan", channel_id="UC123",
+        duration_iso="PT10M", duration_seconds=600, channel_title="Dev Tutorials", channel_id="UC123",
         thumbnail_url="https://i.ytimg.com/vi/x/maxresdefault.jpg",
     )
     fields.update(update)
@@ -101,10 +101,10 @@ def test_field_map():
 
 
 def test_build_fields():
-    settings = Settings(site_url="https://iomechs.com/blog")
+    settings = Settings(site_url="https://example.com/blog")
     fields = sanity.build_fields(_article(), _meta(), [{"@type": "VideoObject"}], [], settings)
     assert fields["slug"] == {"_type": "slug", "current": "angular-signals"}
-    assert fields["seo"]["canonicalUrl"] == "https://iomechs.com/blog/angular-signals"
+    assert fields["seo"]["canonicalUrl"] == "https://example.com/blog/angular-signals"
     assert json.loads(fields["jsonLd"]) == [{"@type": "VideoObject"}]
     assert "canonicalUrl" not in sanity.build_fields(_article(), _meta(), [], [], Settings())["seo"]
 

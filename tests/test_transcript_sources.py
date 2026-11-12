@@ -28,11 +28,11 @@ def test_glossary_prompt_drops_whole_terms_past_the_limit(monkeypatch):
 def test_whisper_terms_puts_video_names_first_without_repeats():
     metadata = VideoMetadata(
         video_id="abc", title="Angular  Signals in 10 minutes", description="", published_at="",
-        duration_iso="PT10M", duration_seconds=600, tags=["angular", "NgRx"], channel_title="Code with Ahsan",
+        duration_iso="PT10M", duration_seconds=600, tags=["angular", "NgRx"], channel_title="Dev Tutorials",
         channel_id="c", thumbnail_url="", chapters=[Chapter(start_seconds=0, title="Intro")],
     )
     assert whisper_terms(["Angular", "RxJS"], metadata) == [
-        "Angular Signals in 10 minutes", "Code with Ahsan", "Intro", "angular", "NgRx", "RxJS",
+        "Angular Signals in 10 minutes", "Dev Tutorials", "Intro", "angular", "NgRx", "RxJS",
     ]
     assert whisper_terms(["Angular"], None) == ["Angular"]
 
