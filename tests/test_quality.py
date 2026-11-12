@@ -14,7 +14,7 @@ VID = "dQw4w9WgXcQ"
 def _meta(**update) -> VideoMetadata:
     return VideoMetadata(
         video_id=VID, title="t", description="d", published_at="2025-03-01T14:00:00Z", duration_iso="PT10M",
-        duration_seconds=600, channel_title="Code with Ahsan", channel_id="UC123", thumbnail_url="",
+        duration_seconds=600, channel_title="Dev Tutorials", channel_id="UC123", thumbnail_url="",
         github_urls=["https://github.com/octo/app"], **update,
     )
 

@@ -5,4 +5,4 @@
 - Paragraphs: short, 2 to 4 sentences. Use lists for steps and options.
 - Use the official casing for product and library names (Angular, RxJS, Next.js, Gemini, TypeScript).
 - Use American English spelling.
-- Refer to the video naturally ("In the video, Ahsan shows ..."), but sparingly. The article is the main product.
+- Refer to the video naturally ("In the video, the presenter shows ..."), but sparingly. The article is the main product.

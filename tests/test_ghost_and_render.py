@@ -29,7 +29,7 @@ def test_admin_token_rejects_bad_key():
 def _meta() -> VideoMetadata:
     return VideoMetadata(
         video_id="dQw4w9WgXcQ", title="Signals & <You>", description="d", published_at="2025-03-01T14:00:00Z",
-        duration_iso="PT10M", duration_seconds=600, channel_title="Code with Ahsan", channel_id="UC123",
+        duration_iso="PT10M", duration_seconds=600, channel_title="Dev Tutorials", channel_id="UC123",
         thumbnail_url="https://i.ytimg.com/max.jpg",
     )
 
@@ -53,7 +53,7 @@ def _article() -> Article:
 def test_build_html_order_and_escaping():
     html = build_html(_article(), _meta())
     order = ["<p>Intro</p>", "What you'll learn", "kg-card-begin: html", "Creating signals", "Effects",
-             "Key takeaways", "Frequently asked questions", "Code with Ahsan"]
+             "Key takeaways", "Frequently asked questions", "Dev Tutorials"]
     positions = [html.index(marker) for marker in order]
     assert positions == sorted(positions)
     assert "https://www.youtube.com/embed/dQw4w9WgXcQ" in html
@@ -80,18 +80,18 @@ def test_build_tags_primary_first_and_deduped():
 
 
 def test_build_post():
-    settings = Settings(ghost_author_email="ahsan@example.com")
+    settings = Settings(ghost_author_email="author@example.com")
     post = build_post(_article(), "<p>x</p>", "<script></script>", settings, "https://ghost/img.jpg")
     assert post["status"] == "draft"
     assert post["tags"][0] == "video-explainer"
-    assert post["authors"] == ["ahsan@example.com"]
+    assert post["authors"] == ["author@example.com"]
     assert post["feature_image"] == "https://ghost/img.jpg"
     assert post["codeinjection_head"] == "<script></script>"
     assert post["og_title"] == post["twitter_title"] == "Angular Signals"
     assert post["og_description"] == post["meta_description"]
     assert "canonical_url" not in post
-    with_site = build_post(_article(), "", "", Settings(site_url="https://iomechs.com/blog/"), None)
-    assert with_site["canonical_url"] == "https://iomechs.com/blog/angular-signals"
+    with_site = build_post(_article(), "", "", Settings(site_url="https://example.com/blog/"), None)
+    assert with_site["canonical_url"] == "https://example.com/blog/angular-signals"
 
 
 def test_faq_schema():
@@ -126,7 +126,7 @@ def test_build_markdown():
     assert 'tags: ["Angular", "Video-Explainer", "Signals"]' in front
     assert '"@type": "VideoObject"' in front
     order = ["# Angular Signals explained", "## What you'll learn", "<iframe", "## Creating signals",
-             "## Effects", "## Key takeaways", "### What is a signal?", "Code with Ahsan"]
+             "## Effects", "## Key takeaways", "### What is a signal?", "Dev Tutorials"]
     positions = [body.index(marker) for marker in order]
     assert positions == sorted(positions)
     assert "[▶ Watch this part (4:32)](https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=272s)" in body
@@ -189,7 +189,7 @@ def test_ghost_skipped_when_run_says_no(tmp_path):
 
     ctx = _render_ctx(tmp_path)
     ctx.settings = ctx.settings.model_copy(update={"ghost_admin_api_key": KEY})
-    ctx.ghost = False
+    ctx.destination = "none"
     ghost.run(ctx)
     assert not ctx.path(ghost.OUTPUT).exists()
 

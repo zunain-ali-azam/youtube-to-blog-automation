@@ -99,15 +99,22 @@ def build_html(article: Article, meta: VideoMetadata, links: list[tuple[str, str
         for item in article.faq:
             parts += [f"<h3>{escape(item.question)}</h3>", item.answer_html]
     if links:
-        parts += ["<h2>Related articles</h2>",
-                  _list([f'<a href="{escape(url)}">{escape(text)}</a>' for text, url in links])]
+        parts.append(related_html(links))
 
-    parts.append(
-        "<hr><p><em>This article is based on the video "
+    parts.append("<hr>" + credit_html(meta))
+    return "\n".join(parts)
+
+
+def related_html(links: list[tuple[str, str]]) -> str:
+    return "<h2>Related articles</h2>\n" + _list([f'<a href="{escape(url)}">{escape(text)}</a>' for text, url in links])
+
+
+def credit_html(meta: VideoMetadata) -> str:
+    return (
+        "<p><em>This article is based on the video "
         f'<a href="{meta.watch_url}">{escape(meta.title)}</a> by '
         f'<a href="{meta.channel_url}">{escape(meta.channel_title)}</a>.</em></p>'
     )
-    return "\n".join(parts)
 
 
 def build_jsonld(article: Article, meta: VideoMetadata) -> dict:

@@ -29,6 +29,10 @@ LLM_PROVIDERS = {
 }
 
 
+# Where a finished blog goes besides generated_blogs/: DESTINATION value -> name shown to people.
+DESTINATIONS = {"ghost": "Ghost", "sanity": "Sanity", "none": "generated_blogs/ only"}
+
+
 class ConfigError(Exception):
     pass
 
@@ -48,11 +52,25 @@ class Settings(BaseModel):
     llm_model: str = ""
     llm_base_url: str = ""
 
+    # A CMS from DESTINATIONS. Its stage skips itself while that CMS has no keys in .env.
+    destination: Literal["ghost", "sanity", "none"] = "ghost"
+
     ghost_url: str = "http://localhost:2368"
     ghost_admin_api_key: str = ""
     ghost_content_api_key: str = ""
     ghost_author_email: str = ""
     ghost_primary_tag: str = "video-explainer"
+    sanity_project_id: str = ""
+    sanity_dataset: str = "production"
+    sanity_api_token: str = ""  # an Editor token; read-only tokens can't create drafts
+    sanity_api_version: str = "v2025-02-19"
+    # The Studio's address, for the "open the draft" link; empty = print the document id instead.
+    sanity_studio_url: str = ""
+    sanity_post_type: str = "post"
+    # Renames for the post fields when the Studio doesn't use the template's names, e.g.
+    # "content=body,coverImage=mainImage"; "seo=-" leaves a field out.
+    sanity_fields: str = ""
+
     # Where readers see the article (e.g. the Next.js blog); used for the canonical URL.
     site_url: str = ""
 
@@ -71,7 +89,7 @@ class Settings(BaseModel):
             raise ValueError(f"LLM_PROVIDER must be one of: {', '.join(LLM_PROVIDERS)}")
         return v
 
-    @field_validator("ghost_url", "site_url")
+    @field_validator("ghost_url", "site_url", "sanity_studio_url")
     @classmethod
     def _strip_slash(cls, v: str) -> str:
         return v.rstrip("/")

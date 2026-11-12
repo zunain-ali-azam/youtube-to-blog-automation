@@ -1,6 +1,6 @@
 """Stage 5: create or update the Ghost draft -> ghost_post.json
 
-Optional: when GHOST_ADMIN_API_KEY is not set, the stage is skipped and the job
+Optional: unless DESTINATION=ghost and GHOST_ADMIN_API_KEY is set, the stage is skipped and the job
 ends with article.md as its result.
 
 Uses the Ghost Admin API: a fresh HS256 JWT per request, the thumbnail uploaded as
@@ -178,7 +178,7 @@ def _existing_post_id(ctx: Context) -> str | None:
 
 
 def run(ctx: Context) -> None:
-    if not ctx.ghost:
+    if ctx.destination != "ghost":
         log.info("Not sending this run to Ghost, skipping the draft")
         return
     if not is_configured(ctx.settings):

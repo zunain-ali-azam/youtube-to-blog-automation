@@ -62,7 +62,7 @@ def test_parse_chapters():
 (12:30) computed() and effect()
 1:02:15 Deploying
 
-Code: https://github.com/codewithahsan/signals-demo"""
+Code: https://github.com/devtutorials/signals-demo"""
     chapters = parse_chapters(description)
     assert [(c.start_seconds, c.title) for c in chapters] == [
         (0, "Intro"),
@@ -88,7 +88,7 @@ def test_build_metadata_from_api_item():
             "title": "Angular Signals",
             "description": "0:00 Intro\n2:00 Demo",
             "publishedAt": "2025-03-01T14:00:00Z",
-            "channelTitle": "Code with Ahsan",
+            "channelTitle": "Dev Tutorials",
             "channelId": "UC123",
             "tags": ["angular"],
             "thumbnails": {"high": {"url": "https://i.ytimg.com/hq.jpg"}, "maxres": {"url": "https://i.ytimg.com/max.jpg"}},
