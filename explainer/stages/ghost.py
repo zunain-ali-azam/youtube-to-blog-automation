@@ -25,7 +25,7 @@ from explainer import net
 from explainer.config import Settings
 from explainer.context import Context
 from explainer.models import Article, VideoMetadata
-from explainer.stages import generate, metadata as metadata_stage, render
+from explainer.stages import cms, generate, metadata as metadata_stage, render
 
 log = logging.getLogger(__name__)
 
@@ -157,7 +157,7 @@ def fetch_published_posts(settings: Settings) -> list[dict]:
     ]
 
 
-class GhostConflict(Exception):
+class GhostConflict(cms.DraftConflict):
     pass
 
 

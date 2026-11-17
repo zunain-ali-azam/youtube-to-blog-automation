@@ -30,7 +30,7 @@ LLM_PROVIDERS = {
 
 
 # Where a finished blog goes besides generated_blogs/: DESTINATION value -> name shown to people.
-DESTINATIONS = {"ghost": "Ghost", "sanity": "Sanity", "none": "generated_blogs/ only"}
+DESTINATIONS = {"ghost": "Ghost", "sanity": "Sanity", "payload": "Payload", "none": "generated_blogs/ only"}
 
 
 class ConfigError(Exception):
@@ -53,7 +53,7 @@ class Settings(BaseModel):
     llm_base_url: str = ""
 
     # A CMS from DESTINATIONS. Its stage skips itself while that CMS has no keys in .env.
-    destination: Literal["ghost", "sanity", "none"] = "ghost"
+    destination: Literal["ghost", "sanity", "payload", "none"] = "ghost"
 
     ghost_url: str = "http://localhost:2368"
     ghost_admin_api_key: str = ""
@@ -70,6 +70,16 @@ class Settings(BaseModel):
     # Renames for the post fields when the Studio doesn't use the template's names, e.g.
     # "content=body,coverImage=mainImage"; "seo=-" leaves a field out.
     sanity_fields: str = ""
+    payload_url: str = "http://localhost:3000"
+    # An API key (needs `auth: {useAPIKey: true}` on the users collection), or a user to log in as.
+    payload_api_key: str = ""
+    payload_email: str = ""
+    payload_password: str = ""
+    payload_auth_collection: str = "users"
+    payload_collection: str = "posts"
+    payload_media_collection: str = "media"
+    # Renames for the post fields, like SANITY_FIELDS, e.g. "content=body,heroImage=-".
+    payload_fields: str = ""
 
     # Where readers see the article (e.g. the Next.js blog); used for the canonical URL.
     site_url: str = ""
@@ -89,7 +99,7 @@ class Settings(BaseModel):
             raise ValueError(f"LLM_PROVIDER must be one of: {', '.join(LLM_PROVIDERS)}")
         return v
 
-    @field_validator("ghost_url", "site_url", "sanity_studio_url")
+    @field_validator("ghost_url", "site_url", "sanity_studio_url", "payload_url")
     @classmethod
     def _strip_slash(cls, v: str) -> str:
         return v.rstrip("/")

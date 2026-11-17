@@ -16,6 +16,8 @@ COLUMNS = [
     "ghost_editor_url",
     "sanity_document_id",  # without the drafts. prefix
     "sanity_editor_url",
+    "payload_document_id",
+    "payload_editor_url",
     "published_url",
     "created_at",
     "updated_at",

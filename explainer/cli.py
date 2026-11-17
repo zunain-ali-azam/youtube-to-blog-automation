@@ -18,7 +18,7 @@ from explainer.config import DESTINATIONS, ConfigError, Settings, load_settings
 from explainer.context import Context
 from explainer.jobs import JobStore
 from explainer.pipeline import STAGE_NAMES, StageFailed, get_stage, run_all, run_stage, stages_for
-from explainer.stages import checks, generate, ghost as ghost_stage, render, sanity as sanity_stage
+from explainer.stages import checks, generate, ghost as ghost_stage, payload as payload_stage, render, sanity as sanity_stage
 from explainer.urls import parse_video_id
 
 app = typer.Typer(add_completion=False, help="Turn a YouTube video into a blog article (Markdown, and a CMS draft if a CMS is set up).")
@@ -27,6 +27,8 @@ app = typer.Typer(add_completion=False, help="Turn a YouTube video into a blog a
 _CMS = {
     "ghost": (ghost_stage, "ghost_post_id", "Set GHOST_URL and GHOST_ADMIN_API_KEY in .env"),
     "sanity": (sanity_stage, "sanity_document_id", "Set SANITY_PROJECT_ID and SANITY_API_TOKEN in .env"),
+    "payload": (payload_stage, "payload_document_id",
+                "Set PAYLOAD_URL and PAYLOAD_API_KEY (or PAYLOAD_EMAIL and PAYLOAD_PASSWORD) in .env"),
 }
 _TO_HELP = f"Where the blog goes besides generated_blogs/: {' | '.join(DESTINATIONS)} (default: DESTINATION in .env)."
 
@@ -219,7 +221,7 @@ def _find_video(blog: str, settings: Settings) -> str:
 @app.command()
 def push(
     blog: str = typer.Argument(..., help="The blog's file or slug in generated_blogs/, or its video URL or ID."),
-    to: Optional[str] = typer.Option(None, "--to", help="ghost | sanity (default: DESTINATION in .env)."),
+    to: Optional[str] = typer.Option(None, "--to", help="ghost | sanity | payload (default: DESTINATION in .env)."),
 ) -> None:
     """Send a generated blog to a CMS as a draft, or update the draft it already has.
 
@@ -228,7 +230,7 @@ def push(
     settings = load_settings()
     destination = _destination(to) or settings.destination
     if destination not in _CMS:
-        ui.alert("error", "No CMS to send it to", "Pass --to ghost or --to sanity, or set DESTINATION in .env")
+        ui.alert("error", "No CMS to send it to", "Pass --to ghost, sanity or payload, or set DESTINATION in .env")
         raise typer.Exit(1)
     module, _, setup = _CMS[destination]
     name = DESTINATIONS[destination]
@@ -264,7 +266,7 @@ def status(video_id: Optional[str] = typer.Argument(None)) -> None:
             ui.console.print("No job for that video.")
             raise typer.Exit(1)
         keys = ("status", "url", "transcript_method", "failed_stage", "error", "ghost_editor_url",
-                "sanity_document_id", "sanity_editor_url", "published_url", "updated_at")
+                "sanity_document_id", "sanity_editor_url", "payload_editor_url", "published_url", "updated_at")
         rows = [(key.replace("_", " ").capitalize(), str(job[key])) for key in keys if job.get(key)]
         ui.result_card(rows, ok=job["status"] != "failed", title=job["video_id"])
         return
@@ -277,7 +279,7 @@ def status(video_id: Optional[str] = typer.Argument(None)) -> None:
         table.add_column(column)
     for job in all_jobs:
         detail = (job.get("error") or job.get("ghost_editor_url") or job.get("sanity_editor_url")
-                  or job.get("url") or "")
+                  or job.get("payload_editor_url") or job.get("url") or "")
         table.add_row(job["video_id"], Text(job["status"], style=_STATUS_STYLES.get(job["status"], "")),
                       (job.get("updated_at") or "")[:16].replace("T", " "), Text(detail, style="dim", overflow="ellipsis", no_wrap=True))
     ui.console.print(table)

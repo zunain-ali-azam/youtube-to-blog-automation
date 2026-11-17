@@ -7,7 +7,7 @@ from typing import Callable
 
 from explainer.config import ConfigError
 from explainer.context import Context
-from explainer.stages import checks, code_fetch, generate, ghost, metadata, render, sanity, transcript
+from explainer.stages import checks, cms, code_fetch, generate, ghost, metadata, payload, render, sanity, transcript
 
 log = logging.getLogger(__name__)
 
@@ -31,6 +31,7 @@ CORE_STAGES = [
 DESTINATION_STAGES = [
     Stage("ghost", ghost.OUTPUT, ghost.run),
     Stage("sanity", sanity.OUTPUT, sanity.run),
+    Stage("payload", payload.OUTPUT, payload.run),
 ]
 STAGES = CORE_STAGES + DESTINATION_STAGES
 STAGE_NAMES = [s.name for s in STAGES]
@@ -57,7 +58,7 @@ def run_stage(ctx: Context, stage: Stage) -> None:
         ctx.jobs.upsert(ctx.video_id, status="failed", failed_stage=stage.name, error="Interrupted")
         raise
     except Exception as exc:
-        if isinstance(exc, ConfigError):
+        if isinstance(exc, (ConfigError, cms.DraftConflict)):
             log.error("Stage %s failed: %s", stage.name, exc)
         else:
             log.exception("Stage %s failed", stage.name)

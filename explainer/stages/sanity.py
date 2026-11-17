@@ -22,7 +22,6 @@ import re
 import secrets
 import uuid
 from datetime import datetime, timezone
-from html import escape
 from html.parser import HTMLParser
 from mimetypes import guess_type
 from urllib.parse import urlparse
@@ -30,10 +29,10 @@ from urllib.parse import urlparse
 import httpx
 
 from explainer import net
-from explainer.config import ConfigError, Settings
+from explainer.config import Settings
 from explainer.context import Context
 from explainer.models import Article, VideoMetadata
-from explainer.stages import generate, metadata as metadata_stage, render
+from explainer.stages import cms, generate, metadata as metadata_stage, render
 
 log = logging.getLogger(__name__)
 
@@ -149,57 +148,21 @@ def html_to_portable_text(html: str) -> list[dict]:
     return parser.result()
 
 
-def _list_html(items: list[str]) -> str:
-    return "<ul>" + "".join(f"<li>{item}</li>" for item in items) + "</ul>"
-
-
 def build_content(article: Article, meta: VideoMetadata, links: list[tuple[str, str]] = ()) -> list[dict]:
-    """The article body as Portable Text, in the same order as render.build_html."""
-    pt = html_to_portable_text
-    blocks = pt(article.intro_html)
-    if article.learning_points:
-        blocks += pt("<h2>What you'll learn</h2>" + _list_html(article.learning_points))
-    blocks.append({"_type": "youtube", "_key": _key(), "url": meta.watch_url})
-
-    for section in article.sections:
-        blocks += pt(f"<h2>{escape(section.heading)}</h2>" + render.watch_link(meta, section.start_seconds))
-        blocks += pt(section.body_html)
-        blocks += [{"_type": "code", "_key": _key(), "language": block.language.lower().strip() or "text",
-                    "code": block.code} for block in section.code_blocks]
-
-    if article.key_takeaways:
-        blocks += pt("<h2>Key takeaways</h2>" + _list_html(article.key_takeaways))
-    if article.faq:
-        blocks += pt("<h2>Frequently asked questions</h2>")
-        for item in article.faq:
-            blocks += pt(f"<h3>{escape(item.question)}</h3>" + item.answer_html)
-    if links:
-        blocks += pt(render.related_html(links))
-    blocks += pt(render.credit_html(meta))
+    """The article body as Portable Text, in the order of cms.body_parts."""
+    blocks = []
+    for kind, *value in cms.body_parts(article, meta, links):
+        if kind == "html":
+            blocks += html_to_portable_text(value[0])
+        elif kind == "youtube":
+            blocks.append({"_type": "youtube", "_key": _key(), "url": value[0]})
+        else:
+            language, code = value
+            blocks.append({"_type": "code", "_key": _key(), "language": language or "text", "code": code})
     return blocks
 
 
 # --- document -------------------------------------------------------------------
-
-def parse_field_map(spec: str) -> dict[str, str | None]:
-    """SANITY_FIELDS ("content=body,seo=-") -> {"content": "body", "seo": None}."""
-    mapping = {}
-    for pair in filter(None, (part.strip() for part in spec.split(","))):
-        name, sep, target = (p.strip() for p in pair.partition("="))
-        if not sep or not name or not target:
-            raise ConfigError(f"SANITY_FIELDS entry {pair!r} should look like field=newName or field=-")
-        mapping[name] = None if target == "-" else target
-    return mapping
-
-
-def apply_field_map(fields: dict, mapping: dict[str, str | None]) -> dict:
-    result = {}
-    for name, value in fields.items():
-        target = mapping.get(name, name)
-        if target is not None:
-            result[target] = value
-    return result
-
 
 def build_fields(article: Article, meta: VideoMetadata, schemas: list[dict], content: list[dict],
                  settings: Settings) -> dict:
@@ -226,7 +189,7 @@ def cover_image(asset_id: str, alt: str) -> dict:
 
 # --- HTTP API -------------------------------------------------------------------
 
-class SanityConflict(Exception):
+class SanityConflict(cms.DraftConflict):
     pass
 
 
@@ -307,7 +270,7 @@ def run(ctx: Context) -> None:
     if not is_configured(ctx.settings):
         log.info("Sanity is not configured (SANITY_PROJECT_ID or SANITY_API_TOKEN is empty), skipping the draft")
         return
-    mapping = parse_field_map(ctx.settings.sanity_fields)
+    mapping = cms.parse_field_map(ctx.settings.sanity_fields, "SANITY_FIELDS")
     sanity = SanityClient(ctx.settings)
     article = ctx.load_model(generate.OUTPUT, Article)
     meta = ctx.load_model(metadata_stage.OUTPUT, VideoMetadata)
@@ -323,7 +286,7 @@ def run(ctx: Context) -> None:
             last_rev = ctx.load_json(OUTPUT).get("rev") if ctx.path(OUTPUT).exists() else None
             check_updatable(versions, last_rev)
             sanity.mutate([{"patch": {"id": DRAFT_PREFIX + doc_id, "ifRevisionID": last_rev,
-                                      "set": apply_field_map(fields, mapping)}}])
+                                      "set": cms.apply_field_map(fields, mapping)}}])
             _save(ctx, sanity, doc_id)
             log.info("Sanity draft updated: %s", DRAFT_PREFIX + doc_id)
             return
@@ -336,7 +299,7 @@ def run(ctx: Context) -> None:
         filename = f"{ctx.video_id}-{urlparse(meta.thumbnail_url).path.rsplit('/', 1)[-1]}"
         document["coverImage"] = cover_image(sanity.upload_image(image, filename), meta.title)
     sanity.mutate([{"create": {"_id": DRAFT_PREFIX + doc_id, "_type": sanity.post_type,
-                               **apply_field_map(document, mapping)}}])
+                               **cms.apply_field_map(document, mapping)}}])
     _save(ctx, sanity, doc_id)
     log.info("Sanity draft created: %s", DRAFT_PREFIX + doc_id)
 

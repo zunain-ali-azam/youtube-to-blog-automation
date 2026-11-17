@@ -120,12 +120,15 @@ def _destination(reconfigure: bool) -> str:
         Option("none", "No", "only save it to generated_blogs/"),
         Option("ghost", "Ghost"),
         Option("sanity", "Sanity", "needs the schema in cms/sanity/ added to your Studio"),
+        Option("payload", "Payload", "needs the fields in cms/payload/ added to your posts collection"),
     ], saved if saved in DESTINATIONS else "none")
     _save("DESTINATION", destination)
     if destination == "ghost":
         _ghost(reconfigure)
     elif destination == "sanity":
         _sanity(reconfigure)
+    elif destination == "payload":
+        _payload(reconfigure)
     return destination
 
 
@@ -141,6 +144,28 @@ def _sanity(reconfigure: bool) -> None:
                           default=_env("SANITY_STUDIO_URL"), shown_as=lambda v: v or "(skipped)")
     if studio:
         _save("SANITY_STUDIO_URL", studio)
+
+
+def _payload(reconfigure: bool) -> None:
+    saved_key = _env("PAYLOAD_API_KEY")
+    if (saved_key or (_env("PAYLOAD_EMAIL") and _env("PAYLOAD_PASSWORD"))) and not reconfigure:
+        who = ui.mask(saved_key) if saved_key else _env("PAYLOAD_EMAIL")
+        prompts.done("Payload", f"{_env('PAYLOAD_URL') or 'http://localhost:3000'} · {who}  (saved)")
+        return
+    _save("PAYLOAD_URL", prompts.text("Payload URL", default=_env("PAYLOAD_URL") or "http://localhost:3000",
+                                      validate=_required))
+    # The website template's users can log in but have no API keys until useAPIKey is turned on.
+    method = prompts.select("Sign in to Payload with", [
+        Option("login", "Email and password", "a user of the admin panel"),
+        Option("key", "API key", "needs auth: {useAPIKey: true} on the users collection"),
+    ], "key" if saved_key else "login")
+    if method == "key":
+        _save("PAYLOAD_API_KEY", prompts.text("Payload API key", validate=_required, secret=True, shown_as=ui.mask))
+    else:
+        _save("PAYLOAD_API_KEY", "")
+        _save("PAYLOAD_EMAIL", prompts.text("Payload user email", default=_env("PAYLOAD_EMAIL"), validate=_required))
+        _save("PAYLOAD_PASSWORD", prompts.text("Payload user password", validate=_required, secret=True,
+                                               shown_as=ui.mask))
 
 
 def _ghost(reconfigure: bool) -> None:
