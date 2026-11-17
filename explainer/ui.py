@@ -42,6 +42,7 @@ STAGE_LABELS = {
     "render": "Rendering Markdown and HTML",
     "ghost": "Creating the Ghost draft",
     "sanity": "Creating the Sanity draft",
+    "payload": "Creating the Payload draft",
 }
 
 

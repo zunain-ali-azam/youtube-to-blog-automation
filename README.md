@@ -11,7 +11,7 @@
   <img src="https://img.shields.io/badge/python-3.11%2B-3776ab?logo=python&logoColor=white" alt="Python 3.11+">
   <img src="https://img.shields.io/badge/command-yt2blog-a21caf" alt="command: yt2blog">
   <img src="https://img.shields.io/badge/LLM-any%20provider-8b5cf6" alt="LLM: any provider">
-  <img src="https://img.shields.io/badge/CMS-Ghost%20%7C%20Sanity-15171a" alt="CMS: Ghost or Sanity">
+  <img src="https://img.shields.io/badge/CMS-Ghost%20%7C%20Sanity%20%7C%20Payload-15171a" alt="CMS: Ghost, Sanity or Payload">
   <img src="https://img.shields.io/badge/transcripts-captions%20%7C%20Whisper-ff0000?logo=youtube&logoColor=white" alt="transcripts: captions or Whisper">
   <br>
   <img src="https://img.shields.io/badge/built%20with-Typer-009688" alt="built with Typer">
@@ -48,7 +48,7 @@ The full spec is in [`video-explainer-pipeline.md`](video-explainer-pipeline.md)
 - **Quality checks**: length, SEO fields, copied passages, unverified code, bad timestamps and broken links are all flagged as warnings.
 - **SEO ready**: meta title and description, Open Graph and Twitter fields, canonical URL, and VideoObject and FAQPage JSON-LD.
 - **Resumable**: every stage caches its output, so a failed run picks up where it stopped.
-- **CMS drafts**: sends the post to Ghost or Sanity as a draft, and updates that draft later without overwriting edits made in the CMS.
+- **CMS drafts**: sends the post to Ghost, Sanity or Payload as a draft, and updates that draft later without overwriting edits made in the CMS.
 
 ## Quick start
 
@@ -100,7 +100,7 @@ Settings live in `.env` at the project root (see [`.env.example`](.env.example))
 | `WHISPER_MODEL` | `small` | `tiny`, `base`, `small`, `medium`, `large-v3` or `turbo` |
 | `WHISPER_DEVICE` | `auto` | `auto`, `cpu` or `cuda` |
 | `WHISPER_COMPUTE_TYPE` | `int8` | faster-whisper compute type |
-| `DESTINATION` | `ghost` | Where the blog goes besides `generated_blogs/`: `ghost`, `sanity` or `none`. A CMS without its keys is skipped |
+| `DESTINATION` | `ghost` | Where the blog goes besides `generated_blogs/`: `ghost`, `sanity`, `payload` or `none`. A CMS without its keys is skipped |
 | `GHOST_URL` | `http://localhost:2368` | Ghost site |
 | `GHOST_ADMIN_API_KEY` | | Ghost Admin API key (`id:secret`); empty means no Ghost draft |
 | `GHOST_CONTENT_API_KEY` | | Enables internal links to published posts |
@@ -113,6 +113,13 @@ Settings live in `.env` at the project root (see [`.env.example`](.env.example))
 | `SANITY_STUDIO_URL` | | Studio address (`http://localhost:3333`), for links to the draft |
 | `SANITY_POST_TYPE` | `post` | Document type of a post |
 | `SANITY_FIELDS` | | Field renames, e.g. `content=body,coverImage=mainImage,seo=-` (see [Sanity setup](#sanity-setup)) |
+| `PAYLOAD_URL` | `http://localhost:3000` | Payload site |
+| `PAYLOAD_API_KEY` | | API key of a user (needs `useAPIKey`); or use `PAYLOAD_EMAIL` and `PAYLOAD_PASSWORD` |
+| `PAYLOAD_EMAIL`, `PAYLOAD_PASSWORD` | | A user to log in as; with no key or login there's no Payload draft |
+| `PAYLOAD_AUTH_COLLECTION` | `users` | Collection the user or API key belongs to |
+| `PAYLOAD_COLLECTION` | `posts` | Collection of posts |
+| `PAYLOAD_MEDIA_COLLECTION` | `media` | Upload collection for the hero image |
+| `PAYLOAD_FIELDS` | | Field renames, e.g. `content=body,heroImage=coverImage,tags=-` (see [Payload setup](#payload-setup)) |
 | `SITE_URL` | | Public blog base, e.g. `https://example.com/blog`; sets the canonical URL to `SITE_URL/<slug>` |
 | `GITHUB_TOKEN` | | Raises the GitHub API limit above 60 requests an hour |
 | `BLOGS_DIR` | `generated_blogs/` | Where finished blogs are saved |
@@ -152,9 +159,9 @@ Article generation is a single call, with output constrained to the `Article` JS
 |---|---|
 | `yt2blog` | Guided run (same as `yt2blog start`) |
 | `yt2blog start --reconfigure` | Guided run that asks for every key again |
-| `yt2blog run <url> [--force] [--to ghost\|sanity\|none] [--transcript captions\|whisper\|auto]` | Whole pipeline, no questions |
+| `yt2blog run <url> [--force] [--to ghost\|sanity\|payload\|none] [--transcript captions\|whisper\|auto]` | Whole pipeline, no questions |
 | `yt2blog stage <stage> <video_id>` | Rerun one stage from cache |
-| `yt2blog push <blog> [--to ghost\|sanity]` | Send a saved blog to a CMS, or update its draft |
+| `yt2blog push <blog> [--to ghost\|sanity\|payload]` | Send a saved blog to a CMS, or update its draft |
 | `yt2blog status [<video_id>]` | Show jobs |
 | `yt2blog compare-transcripts <url> [--force]` | Captions vs Whisper report |
 
@@ -164,7 +171,7 @@ Article generation is a single call, with output constrained to the `Article` JS
 
 1. **Keys and model**: the YouTube key, the LLM provider, that provider's key and the model. Saved keys show masked (`sk-a…hijk  (saved)`) and aren't asked again; the saved model is one Enter to keep. The model list comes live from the provider with your key, and long lists filter as you type. `.env` is created from `.env.example` if there isn't one, and what you enter is saved there.
 2. **Video**: the URL (checked when you press Enter) and the transcript source. The Whisper options are greyed out until the Whisper extra is installed.
-3. **Destination**: whether to also send the blog to Ghost or Sanity as a draft (asking for that CMS's keys if they aren't saved yet). The choice is saved as `DESTINATION`. The blog is saved to `generated_blogs/` either way.
+3. **Destination**: whether to also send the blog to Ghost, Sanity or Payload as a draft (asking for that CMS's keys if they aren't saved yet). The choice is saved as `DESTINATION`. The blog is saved to `generated_blogs/` either way.
 
 After **Start generating?**, the stages run as a live checklist on the same rail. The run ends with `SUCCESS`/`INFO`/`WARNING` lines (title, length, where the blog went, quality warnings) and the next commands to run. On a failure you get an `ERROR` line with the stage and the error, plus the log file; running again resumes from that stage. Ctrl+C or Esc at any step cancels without running anything.
 
@@ -172,9 +179,9 @@ After **Start generating?**, the stages run as a live checklist on the same rail
 
 Every run saves the finished blog to `generated_blogs/<slug>.md` (git-ignored). `yt2blog run` also sends it as a draft to the CMS in `DESTINATION`, when that CMS has its keys in `.env`. `--to` picks a different one for a single run, and `--to none` skips the CMS (`--no-ghost` still works and means the same).
 
-`yt2blog push <blog> --to ghost|sanity` sends a saved blog to a CMS later, or updates the draft it already has there. `<blog>` is the file (`generated_blogs/my-post.md`), its slug (`my-post`) or the video's URL or ID. The CMS gets the article as generated: edits made to the `.md` file aren't sent.
+`yt2blog push <blog> --to ghost|sanity|payload` sends a saved blog to a CMS later, or updates the draft it already has there. `<blog>` is the file (`generated_blogs/my-post.md`), its slug (`my-post`) or the video's URL or ID. The CMS gets the article as generated: edits made to the `.md` file aren't sent.
 
-`yt2blog stage ghost <video_id>` (or `stage sanity`) updates the job's existing draft: title, body, excerpt, SEO fields, tags and JSON-LD. The feature/cover image, author and date stay as they are. It refuses when the post has been published, or edited in the CMS since the last push, because the update would overwrite those edits.
+`yt2blog stage ghost <video_id>` (or `stage sanity`, `stage payload`) updates the job's existing draft: title, body, excerpt, SEO fields, tags and JSON-LD. The feature/cover/hero image, author and date stay as they are. It refuses when the post has been published, or edited in the CMS since the last push, because the update would overwrite those edits.
 
 `--force` clears the cached files and makes a new draft, even if one already exists for the video.
 
@@ -190,7 +197,7 @@ It saves `transcript_captions.json`, `transcript_whisper_<model>.json` and `comp
 
 ### Pipeline
 
-`metadata` → `transcript` → `generate` → `code` → `checks` → `render` → `ghost` or `sanity`
+`metadata` → `transcript` → `generate` → `code` → `checks` → `render` → `ghost`, `sanity` or `payload`
 
 | Stage | Output | What it does |
 |---|---|---|
@@ -202,6 +209,7 @@ It saves `transcript_captions.json`, `transcript_whisper_<model>.json` and `comp
 | `render` | `article.md`, `article.html`, `jsonld.json` | Final Markdown, HTML and JSON-LD; copies the post to `generated_blogs/<slug>.md` |
 | `ghost` | `ghost_post.json` | Creates or updates the Ghost draft; runs when `DESTINATION` is `ghost` and Ghost is configured |
 | `sanity` | `sanity_post.json` | Creates or updates the Sanity draft; runs when `DESTINATION` is `sanity` and Sanity is configured |
+| `payload` | `payload_post.json` | Creates or updates the Payload draft; runs when `DESTINATION` is `payload` and Payload is configured |
 
 There is no separate transcript cleanup: `generate` sends the raw transcript, the metadata and the glossary in one LLM call and the model fixes misheard terms as it writes.
 
@@ -233,7 +241,7 @@ The Markdown file in `generated_blogs/` is always written. On top of that, the b
 |---|---|
 | Ghost | **Supported** (see [Ghost setup](#ghost-setup)) |
 | Sanity | **Supported** (see [Sanity setup](#sanity-setup)) |
-| Payload CMS | Planned |
+| Payload CMS | **Supported** (see [Payload setup](#payload-setup)) |
 
 ### Ghost setup
 
@@ -268,6 +276,27 @@ Sanity has no fixed post type, so yt2blog writes posts shaped like the `post` in
 
 The post is created as a draft (`drafts.<id>`), so it shows in the Studio as unpublished until someone publishes it. Running again patches that draft only while its revision is the one yt2blog last pushed.
 
+### Payload setup
+
+yt2blog writes posts shaped like the `posts` collection in Payload's official [website template](https://github.com/payloadcms/payload/tree/main/templates/website):
+
+- `title` and `slug`
+- `heroImage`: the thumbnail, uploaded to the `media` collection, with alt text (also used as `meta.image`)
+- `content`: the body as Lexical rich text, with the template's `code` block and a `youtube` block
+- `meta`: the SEO plugin's title and description
+- `tags`, `canonicalUrl`, `video` and `jsonLd`
+
+[`cms/payload/`](cms/payload/README.md) has what to add to your project (the YouTube block, more code languages and the extra fields), plus the front-end converter.
+
+1. Add the config from `cms/payload/` to your project and restart it.
+2. Create a user for yt2blog in the admin panel, or turn on API keys for users and generate one.
+3. Set `DESTINATION=payload`, `PAYLOAD_URL`, and either `PAYLOAD_API_KEY` or `PAYLOAD_EMAIL` and `PAYLOAD_PASSWORD` in `.env`, or run `yt2blog` and pick Payload.
+4. If your collection names things differently, set `PAYLOAD_COLLECTION` and `PAYLOAD_FIELDS` instead of changing it.
+
+The post is saved with `?draft=true`, so it shows as a draft in the admin panel until someone publishes it. Running again saves a new draft only while the post is unpublished and its latest draft is still the one yt2blog last pushed (same `updatedAt`). Unlike Sanity, Payload can't make that check part of the write, so an edit saved in the second between the check and the update would be lost.
+
+Payload's slugs are unique, so `yt2blog run --force` on a video that already has a post there stops with "a Payload post with the slug … already exists". Delete or rename the old post first.
+
 ### Headless front ends
 
 Set `SITE_URL` when another site displays the posts through the Ghost Content API: the draft's canonical URL becomes `SITE_URL/<slug>`. The draft also gets Open Graph and Twitter titles and descriptions (copied from the meta fields, since a headless front end has no theme to fall back on), and `codeinjection_head` holds the VideoObject and FAQPage JSON-LD, which that site has to put into its `<head>` itself.
@@ -282,7 +311,7 @@ Set `SITE_URL` when another site displays the posts through the Ghost Content AP
 .venv/bin/pytest
 ```
 
-Unit tests cover URL parsing, chapter parsing, ISO 8601 durations, JWT generation, transcript chunking, HTML/Markdown/JSON-LD rendering, the quality checks (including the n-gram overlap check), code matching, Portable Text conversion, creating and updating Ghost and Sanity drafts in place, and job status. They make no network calls.
+Unit tests cover URL parsing, chapter parsing, ISO 8601 durations, JWT generation, transcript chunking, HTML/Markdown/JSON-LD rendering, the quality checks (including the n-gram overlap check), code matching, Portable Text and Lexical conversion, creating and updating Ghost, Sanity and Payload drafts in place, and job status. They make no network calls.
 
 ### Manual end-to-end test (local Ghost)
 
@@ -311,4 +340,4 @@ Unit tests cover URL parsing, chapter parsing, ISO 8601 durations, JWT generatio
 | 2. Transcription | Whisper, `auto` mode, glossary prompt, `compare-transcripts` | **Done** |
 | 3. Quality | Code from repo, quality checks, internal links (warnings print in the terminal) | **Done**, except Slack notify |
 | 4. Publishing loop | `yt2blog serve` webhook | Not started |
-| 5. More destinations | Sanity, Payload CMS | Sanity **done**; Payload in progress |
+| 5. More destinations | Sanity, Payload CMS | **Done** |

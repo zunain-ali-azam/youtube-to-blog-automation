@@ -9,7 +9,7 @@ from explainer.context import Context
 from explainer.jobs import JobStore
 from explainer.models import Article, CodeBlock, FAQItem, Section, VideoMetadata
 from explainer.pipeline import finish, stages_for
-from explainer.stages import generate, metadata as metadata_stage, render, sanity
+from explainer.stages import cms, generate, metadata as metadata_stage, render, sanity
 
 VID = "dQw4w9WgXcQ"
 
@@ -92,12 +92,12 @@ def test_related_links_rendered():
 # --- fields ----------------------------------------------------------------------
 
 def test_field_map():
-    mapping = sanity.parse_field_map(" content=body , seo=- ")
+    mapping = cms.parse_field_map(" content=body , seo=- ", "SANITY_FIELDS")
     assert mapping == {"content": "body", "seo": None}
-    assert sanity.apply_field_map({"content": 1, "seo": 2, "title": 3}, mapping) == {"body": 1, "title": 3}
-    assert sanity.parse_field_map("") == {}
-    with pytest.raises(ConfigError):
-        sanity.parse_field_map("content")
+    assert cms.apply_field_map({"content": 1, "seo": 2, "title": 3}, mapping) == {"body": 1, "title": 3}
+    assert cms.parse_field_map("", "SANITY_FIELDS") == {}
+    with pytest.raises(ConfigError, match="SANITY_FIELDS"):
+        cms.parse_field_map("content", "SANITY_FIELDS")
 
 
 def test_build_fields():
